@@ -65,6 +65,12 @@ def parse_args(version, header):
         "SampleOptions", "Options for conformational sampling methods"
     )
     sampleopt_group.add_argument(
+        "--sampletp",
+        action="store_true",
+        default=False,
+        help="Determine protonation/tautomerization state",
+    )
+    sampleopt_group.add_argument(
         "-m",
         "--method",
         dest="samplopt",

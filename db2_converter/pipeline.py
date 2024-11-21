@@ -61,6 +61,14 @@ def max_conf_assign(smi, max_conf, max_conf_noring):
     return max_conf
 
 
+def sample_tp_unicon(infile,outfile=""):
+    if not outfile:
+        outfile = infile.stem + ".uni.smi"
+        # only generate one smiles
+        run_external_command(f"{UNICON_EXE} -i {infile} -o {outfile} -t single -p single")
+    return Path(outfile)
+
+
 def write_enumerated_smifile(inlines, outfile, method):
     logger.info(
         "####### Enumerating possible undefined stereochemistry of input SMILES... #######"
@@ -345,6 +353,7 @@ def gen_conf(
     confgenx_option="",
     mergeiso=True,
     dock38=False,
+    **kwargs
 ):
     logger.info(f"############### Now dealing with {zinc}... ###############")
     Path(zinc).mkdir(exist_ok=True)

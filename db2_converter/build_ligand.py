@@ -16,7 +16,7 @@ from rdkit import RDLogger
 RDLogger.DisableLog("rdApp.warning")
 
 from db2_converter.parse_args import parse_args
-from db2_converter.pipeline import write_enumerated_smifile
+from db2_converter.pipeline import sample_tp_unicon, write_enumerated_smifile
 from db2_converter.utils.utils import exist_size, next_mol2_lines
 from db2_converter.mol2db2 import mol2db2
 from db2_converter.utils.match_frags import mol_to_ring_frags
@@ -99,6 +99,8 @@ def main():
         params=params,
     )
 
+    if args.sampletp:
+        infile = sample_tp_unicon(infile)
     lines = [line for line in infile.read_text().split("\n") if line]
 
 

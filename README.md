@@ -116,7 +116,8 @@ OMP_NUM_THREADS=1 build_ligand -i input.smi -n 600 -nr 30 --keep_max_conf -m $me
 ##### 3. Other options
 | option | function
 | -- | -- | 
-| --dock38 | Gnerate DOCK3.8 formatted db2
+| --dock38 | Gnerate DOCK3.8 formatted db2 |
+| --sampletp | Sample protonation/tautomerization state |
 
 
 #### Output example
