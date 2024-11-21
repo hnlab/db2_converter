@@ -113,6 +113,11 @@ OMP_NUM_THREADS=1 build_ligand -i input.smi -n 600 -nr 30 --keep_max_conf -m $me
 # If you need MMFF optimization on the conformers, add --MMFFopt option
 ```
 
+##### 3. Other options
+| option | function
+| -- | -- | 
+| --dock38 | Gnerate DOCK3.8 formatted db2
+
 
 #### Output example
 Except for result conformation ensemble files (.db2.gz and .fixed.mol2) and outputed failling list(.faillist). Now a summary of generation results will be provided in the log file under your working directory:

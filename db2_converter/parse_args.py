@@ -147,6 +147,12 @@ def parse_args(version, header):
     # Mol2db2 group
     mol2db2_group = parser.add_argument_group("Mol2db2", "Options for mol2db2")
     mol2db2_group.add_argument(
+        "--dock38",
+        action="store_true",
+        default=False,
+        help="Generate DOCK3.8-formatted db2",
+    )
+    mol2db2_group.add_argument(
         "--reseth",
         action="store_true",
         default=False,

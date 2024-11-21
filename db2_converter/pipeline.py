@@ -35,6 +35,8 @@ from db2_converter.utils.match_frags import (
     mol_to_ring_frags,
 )
 from db2_converter.mol2db2 import mol2db2
+from db2_converter.mol2db2_py3_strain import mol2db2 as mol2db2_38
+from db2_converter.strain.Mol2_Strain import mol2_strain
 from db2_converter.config import config
 
 # Basic config parameters
@@ -92,6 +94,34 @@ def write_enumerated_smifile(inlines, outfile, method):
             f.write(f"{line}\n")
     if toomany:
         return faillist
+
+
+def fixmol2_wrapper(inmol2file, outmol2file, templatemol2file="", smiles="", samplopt=""):
+    tmp0mol2 = "tmp0.mol2"
+    tmp0fixmol2 = "tmp0.mol2.fixed.mol2"
+    TMPmol2 = "conformer.TMP.fixed.mol2"
+    for i, mol2content in enumerate(next_mol2_lines(inmol2file)):
+        with open(f"tmp{i}.mol2", "w") as f:
+            f.write("".join(mol2content))
+    run_external_command(
+        f"{ANTECHAMBER} -i {tmp0mol2} -fi mol2 -o {tmp0fixmol2} -fo mol2 -at sybyl -pf y"
+    )
+    if not templatemol2file:
+        if not smiles:
+            assert smiles != "", "SMILES is not given to fixmol2"
+        if not exist_size(tmp0fixmol2) or not check_mol2_smi(tmp0fixmol2, smiles):
+            # antechamber cannot deal with "[N-]" due to unexpected valence.
+            shutil.copy(tmp0mol2, tmp0fixmol2)
+        fixmol2_and_du(smiles, tmp0fixmol2)
+        templatemol2file = tmp0fixmol2
+    if samplopt == "rdkit":
+        shutil.move(tmp0fixmol2, TMPmol2)
+    else:
+        for tmpmol2 in sorted(Path(".").glob("tmp*.mol2")):
+            fixmol2_by_template(tmpmol2, templatemol2file)
+        subprocess.run(f"rm {tmp0fixmol2}", shell=True)
+        subprocess.run(f"cat tmp*.mol2 > {outmol2file}", shell=True)
+        subprocess.run("rm tmp*", shell=True)
 
 
 def chemistrycheck(insmi, inmol2, outmol2, checkstereo=True):
@@ -184,6 +214,7 @@ def match_and_convert_mol2(
     reseth=True,
     rotateh=True,
     prefix="output",
+    dock38=False,
 ):
     all_blocks = [x for x in next_mol2_lines(mol2file)]
     mol = Chem.MolFromMol2Block("".join(all_blocks[0]), removeHs=False)
@@ -254,18 +285,40 @@ def match_and_convert_mol2(
                 f"{UNICON_EXE} -i sdf/{prefix}.{i}.sdf -o  mol2/{prefix}.{i}.mol2",
                 stderr=subprocess.STDOUT,
             )
-
-            ############## db2 from mol2 ##############
-            mol2db2.mol2db2_main(
-                mol2file=f"mol2/{prefix}.{i}.mol2",
-                solvfile=f"{prefix}.solv",
-                namefile="name.txt",
-                db2gzfile=f"db2/{prefix}.{i}.db2.gz",
-                timeit=True,
-                reseth=reseth,
-                rotateh=rotateh,
-            )
-            ###########################################
+            # # if output mol2 has format issue, put fixmol2_wrapper here
+            # fixmol2_wrapper(
+            #     f"mol2/{prefix}.{i}.mol2",
+            #     f"mol2/{prefix}.{i}.fixed.mol2",
+            #     templatemol2file=mol2file
+            # )
+            if not dock38:
+                ############## DOCK37 db2 from mol2 ##############
+                mol2db2.mol2db2_main(
+                    mol2file=f"mol2/{prefix}.{i}.mol2",
+                    solvfile=f"{prefix}.solv",
+                    namefile="name.txt",
+                    db2gzfile=f"db2/{prefix}.{i}.db2.gz",
+                    timeit=True,
+                    reseth=reseth,
+                    rotateh=rotateh,
+                )
+                ##################################################
+            else:
+                ############## DOCK37 db2 from mol2 ##############
+                fixmol2_wrapper(
+                    f"mol2/{prefix}.{i}.mol2",
+                    f"mol2/{prefix}.{i}.fixed.mol2",
+                    templatemol2file=mol2file
+                )
+                db2in_standard = mol2_strain(f"mol2/{prefix}.{i}.fixed.mol2")
+                mol2db2_38.mol2db2_main(
+                    db2in_standard,
+                    solvfile=f"{prefix}.solv",
+                    db2gzfile=f"db2/{prefix}.{i}.db2.gz",
+                    timeit=True,
+                    reseth=reseth,
+                    rotateh=rotateh,
+                )
             i += 1
     return i
 
@@ -291,6 +344,7 @@ def gen_conf(
     bcl_option="",
     confgenx_option="",
     mergeiso=True,
+    dock38=False,
 ):
     logger.info(f"############### Now dealing with {zinc}... ###############")
     Path(zinc).mkdir(exist_ok=True)
@@ -322,9 +376,6 @@ def gen_conf(
     for samplopt in samplopts:
         mol2file = f"conformer.{zinc}.{samplopt}.mol2"
         fixed_mol2file = f"conformer.{zinc}.{samplopt}.fixed.mol2"
-        tmp0mol2 = "tmp0.mol2"
-        tmp0fixmol2 = "tmp0.mol2.fixed.mol2"
-        TMPmol2 = "conformer.TMP.fixed.mol2"
 
         logger.info(
             f">>> {samplopt} used to sample {max_conf} conformers, checkstereo {checkstereo}, PBfilter {PBfilter}, MMFFopt {MMFFopt}, cluster {cluster}"
@@ -348,29 +399,10 @@ def gen_conf(
             raise_errlog(error, logger)
             continue
 
-        for i, mol2content in enumerate(next_mol2_lines(mol2file)):
-            with open(f"tmp{i}.mol2", "w") as f:
-                f.write("".join(mol2content))
-
         try:
-            run_external_command(
-                f"{ANTECHAMBER} -i {tmp0mol2} -fi mol2 -o {tmp0fixmol2} -fo mol2 -at sybyl -pf y"
-            )
-            if not exist_size(tmp0fixmol2) or not check_mol2_smi(tmp0fixmol2, smi):
-                # antechamber cannot deal with "[N-]" due to unexpected valence.
-                shutil.copy(tmp0mol2, tmp0fixmol2)
-
-            fixmol2_and_du(smi, tmp0fixmol2)
-            if samplopt == "rdkit":
-                shutil.move(tmp0fixmol2, TMPmol2)
-            else:
-                for tmpmol2 in sorted(Path(".").glob("tmp*.mol2")):
-                    fixmol2_by_template(tmpmol2, tmp0fixmol2)
-                subprocess.run(f"rm {tmp0fixmol2}", shell=True)
-                subprocess.run(f"cat tmp*.mol2 > {fixed_mol2file}", shell=True)
-                subprocess.run("rm tmp*", shell=True)
-
+            fixmol2_wrapper(mol2file, fixed_mol2file, "", smi, samplopt)
         except Exception as e:
+            logger.error(e)
             error = "2fixmol2"
             faillist.append([smi, zinc, samplopt, error])
             raise_errlog(error, logger)
@@ -380,6 +412,7 @@ def gen_conf(
             try:
                 conf_sample(samplopt, zinc, fixed_mol2file, max_conf, log=logger)
             except Exception as e:
+                logger.error(e)
                 error = "1generate"
                 faillist.append([smi, zinc, samplopt, error])
                 raise_errlog(error, logger)
@@ -507,7 +540,6 @@ def gen_conf(
     ## ::output: dir sdf with separated cluster sdf file
     ## ::output: dir mol with separated cluster mol2 file
     ## ::output: dir db2 with separated db2.gz file
-
     shutil.rmtree("db2", ignore_errors=True)
     db2part_count = match_and_convert_mol2(
         mol2file=fixed_mol2file,
@@ -517,6 +549,7 @@ def gen_conf(
         reseth=reseth,
         rotateh=rotateh,
         prefix="output",
+        dock38=dock38
     )
     # collect
     if Path("db2").exists():
