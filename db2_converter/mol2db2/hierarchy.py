@@ -450,7 +450,7 @@ class Hierarchy(object):
         outFile.write('T %2d %8s\n' % (colorKey, colorName))
 
   def _allButSetWriter(
-      self, outFile, mol2data, solvdata, setsTotal, clustersTotal=0):
+      self, outFile, mol2data, solvdata, setsTotal, clustersTotal=0, onlyextrafrags=False, chemcolor_dict={}):
     '''writes the M A B X R and C lines'''
     #now the molecule section, facts about the whole molecule, 5 lines
     outFile.write(
@@ -505,7 +505,14 @@ class Hierarchy(object):
     self.rigidNumSeen = 0
     for rigidNum in self.heavyRigidAtomNums:
       self.rigidNumSeen += 1
-      atomColor = mol2data.colorNum[rigidNum]
+      if onlyextrafrags and chemcolor_dict:
+        logger.info(f"Use user-defined chemical colors: {chemcolor_dict}")
+        if rigidNum in chemcolor_dict: # in case some rigid bodies larger than defined
+          atomColor = chemcolor_dict[rigidNum]
+        else:
+          atomColor = 9 # 9 is currently not used for chemical matching, can be altered if needed afterwards
+      else:
+        atomColor = mol2data.colorNum[rigidNum]
       xyz = self.mol2data.atomXyz[0][rigidNum]
       outFile.write(
           'R %6d %2d %+9.4f %+9.4f %+9.4f\n' %
@@ -595,7 +602,7 @@ class Hierarchy(object):
                 self.cloudNumSeen, atomColor,
                 matchXyz[0], matchXyz[1], matchXyz[2]))
 
-  def write(self, db2gzFileName, writeMode='wt'):
+  def write(self, db2gzFileName, writeMode='wt',onlyextrafrags=[],chem_color_dict={}):
     '''writes to the new db2 file format. already gzipped.
     writeMode allows append instead of write(over)'''
     try:  # to open the file
@@ -613,7 +620,9 @@ class Hierarchy(object):
       self._colorWriter(outFile, mol2data)
       self._allButSetWriter(
           outFile, mol2data, solvdata,
-          len(list(self.setToConfs.keys())), len(self.clusters))
+          len(list(self.setToConfs.keys())), len(self.clusters),
+          onlyextrafrags, chem_color_dict
+          )
       self._setWriter(outFile, mol2data, solvdata)
       if self.clusters is not None:  # if makeclouds was run
         self._cloudWriter(outFile, mol2data)  # this sucks, have to only

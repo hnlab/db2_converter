@@ -218,6 +218,7 @@ def match_and_convert_mol2(
     mol2file,
     extra_fragsindex=[],
     extra_fragsmarts="",
+    chemcolor=[],
     onlyextrafrags=False,
     reseth=True,
     rotateh=True,
@@ -249,7 +250,7 @@ def match_and_convert_mol2(
     if extra_fragsmarts:
         extra_fragsindex = []
         for extra_fragindex in mol.GetSubstructMatches(
-            Chem.MolFromSmiles(extra_fragsmarts)
+            Chem.MolFromSmarts(extra_fragsmarts)
         ):
             extra_fragsindex += [list(extra_fragindex)]
     if extra_fragsindex:  # extra_fragsmarts has higher priority than extra_fragsindex
@@ -282,6 +283,7 @@ def match_and_convert_mol2(
         # all_index is a list of lists, each list with len>1 means a cluster
         logger.debug("Rigid body index: %s", index)
         logger.debug("Conformers used id: %s", all_index)
+        chem_color_dict = dict(zip(index,chemcolor))
         for conf_index in all_index:
             writer = Chem.SDWriter(f"sdf/{prefix}.{i}.sdf")
             for conf in conf_index:
@@ -309,6 +311,8 @@ def match_and_convert_mol2(
                     timeit=True,
                     reseth=reseth,
                     rotateh=rotateh,
+                    onlyextrafrags=onlyextrafrags,
+                    chem_color_dict=chem_color_dict
                 )
                 ##################################################
             else:
@@ -326,6 +330,8 @@ def match_and_convert_mol2(
                     timeit=True,
                     reseth=reseth,
                     rotateh=rotateh,
+                    onlyextrafrags=onlyextrafrags,
+                    chem_color_dict=chem_color_dict
                 )
             i += 1
     return i
@@ -343,6 +349,7 @@ def gen_conf(
     limitconf=False,
     extra_fragsindex=[],
     extra_fragsmarts="",
+    chemcolor=[],
     onlyextrafrags=False,
     keep_max_conf=False,
     reseth=True,
@@ -555,6 +562,7 @@ def gen_conf(
         extra_fragsindex=extra_fragsindex,
         extra_fragsmarts=extra_fragsmarts,
         onlyextrafrags=onlyextrafrags,
+        chemcolor=chemcolor,
         reseth=reseth,
         rotateh=rotateh,
         prefix="output",

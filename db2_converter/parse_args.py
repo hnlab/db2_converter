@@ -149,6 +149,14 @@ def parse_args(version, header):
         default=False,
         help="Only use the extra fragments as rigid part",
     )
+    # Chemical matching
+    rigidbody_group.add_argument(
+        "--chemcolor",
+        nargs="+",
+        type=int,
+        default=[],
+        help="Chemical color used for user-defined rigid body"
+    )
 
     # Mol2db2 group
     mol2db2_group = parser.add_argument_group("Mol2db2", "Options for mol2db2")

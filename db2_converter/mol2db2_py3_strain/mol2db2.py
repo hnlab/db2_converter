@@ -174,7 +174,7 @@ def mol2db2(options):
     logger.debug("time to (start) construction hierarchy (subtotal):", timeHier-hydTime)
   return timeStart, hierarchyDataGenerator(mol2data)
 
-def mol2db2writeDb2(options, timeStart, hierarchyDatas):
+def mol2db2writeDb2(options, timeStart, hierarchyDatas, onlyextrafrags=False, chem_color_dict={}):
   '''does the writing of the output files. separate so you can make but
   not write. requires timeStart (can be None if no times wanted) and
   all the hierarchyDatas from the mol2db2 function'''
@@ -186,7 +186,9 @@ def mol2db2writeDb2(options, timeStart, hierarchyDatas):
     hierarchyData.write(
         db2gzFileName=options.db2gzfile, verbose=options.verbose,
         timeit=options.timeit, limitset=options.limitset,
-        writeMode='at')  # append so we don't overwrite
+        writeMode='at',
+        onlyextrafrags=onlyextrafrags,chem_color_dict=chem_color_dict
+    )  # append so we don't overwrite
     yield hierarchyData
   if options.timeit:
     timeHierOut = time.time()
@@ -214,7 +216,6 @@ class Mol2db2args():
     self.limitconf = 9999999999 # "limit on the number of confs"
     self.limitcoord = 9999999999 # "limit on the number of coords"
     self.maxrecursiondepth = None # "Max recursive subdivision steps to take"
-    self.selfrigid = [] # "User defined rigid body indexes"
     self.verbose = True
 
   def __repr__(self):
@@ -229,7 +230,8 @@ def mol2db2_main(
     timeit=False,
     reseth=False,
     rotateh=False,
-    selfrigid = []
+    onlyextrafrags = False,
+    chem_color_dict = {}
 ):
   options = Mol2db2args()
   options.solvfile = solvfile
@@ -238,13 +240,12 @@ def mol2db2_main(
   options.timeit = timeit
   options.reseth = reseth
   options.rotateh = rotateh
-  options.selfrigid = selfrigid
 
   logger.debug("verbose debugging of mol2db2 requested.")
   # hierarchyDatas = mol2db2_quick(mol2, options)  # main program call
   timeStart, hierarchyDatas = mol2db2_quick(mol2, options)  # main program call
   finishedHierarchyDatas = mol2db2writeDb2(
-      options, timeStart, hierarchyDatas)  # write output
+      options, timeStart, hierarchyDatas, onlyextrafrags, chem_color_dict)  # write output
   for hierarchyData in finishedHierarchyDatas:
     logger.debug("Cleaning up")
     del hierarchyData

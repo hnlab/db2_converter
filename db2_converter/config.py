@@ -24,11 +24,11 @@ config = {
         "SCHUTILS": f"/your/path/to/schrodinger2021-2/utilities"
     },
     "ccdc":{
-        "CCDC_PYTHON3": f"/your/path/to/ccdc-software/csd-python-api/miniconda/bin/python3.9",
+        "CCDC_PYTHON3": f"/home/xiaqc/soft/CCDC2023/ccdc-software/csd-python-api/miniconda/bin/python3.9",
         "CCDC_pyscript": f"{__file__.split('config.py')[0]}/utils/ccdc_confgen.py",
-        "CCDC_activate_code": "xxx", # only can be used privately!!!
-        "CCDC_activate_command": f"/your/path/to/ccdc-utilities/software-activation/bin/ccdc_activator -a ",
-        "CCDC_activate_node":"xxx"
+        "CCDC_activate_code": "2A0495-96F9E1-4898A1-29AAFD-F20B63-2BA2C8", # only can be used privately!!!
+        "CCDC_activate_command": f"/home/xiaqc/soft/CCDC2023/ccdc-utilities/software-activation/bin/ccdc_activator -a ",
+        "CCDC_activate_node":"node105"
     }
 }
 
