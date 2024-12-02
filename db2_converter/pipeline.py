@@ -304,16 +304,16 @@ def match_and_convert_mol2(
                 f"{UNICON_EXE} -i sdf/{prefix}.{i}.sdf -o  mol2/{prefix}.{i}.mol2",
                 stderr=subprocess.STDOUT,
             )
-            # # if output mol2 has format issue, put fixmol2_wrapper here
-            # fixmol2_wrapper(
-            #     f"mol2/{prefix}.{i}.mol2",
-            #     f"mol2/{prefix}.{i}.fixed.mol2",
-            #     templatemol2file=mol2file
-            # )
+            # if output mol2 has format issue, put fixmol2_wrapper here
+            fixmol2_wrapper(
+                f"mol2/{prefix}.{i}.mol2",
+                f"mol2/{prefix}.{i}.fixed.mol2",
+                templatemol2file=mol2file
+            )
             if not dock38:
                 ############## DOCK37 db2 from mol2 ##############
                 mol2db2.mol2db2_main(
-                    mol2file=f"mol2/{prefix}.{i}.mol2",
+                    mol2file=f"mol2/{prefix}.{i}.fixed.mol2",
                     solvfile=f"{prefix}.solv",
                     namefile="name.txt",
                     db2gzfile=f"db2/{prefix}.{i}.db2.gz",
@@ -325,12 +325,12 @@ def match_and_convert_mol2(
                 )
                 ##################################################
             else:
-                ############## DOCK37 db2 from mol2 ##############
-                fixmol2_wrapper(
-                    f"mol2/{prefix}.{i}.mol2",
-                    f"mol2/{prefix}.{i}.fixed.mol2",
-                    templatemol2file=mol2file
-                )
+                ############## DOCK38 db2 from mol2 ##############
+                # fixmol2_wrapper(
+                #     f"mol2/{prefix}.{i}.mol2",
+                #     f"mol2/{prefix}.{i}.fixed.mol2",
+                #     templatemol2file=mol2file
+                # )
                 db2in_standard = mol2_strain(f"mol2/{prefix}.{i}.fixed.mol2")
                 mol2db2_38.mol2db2_main(
                     db2in_standard,
