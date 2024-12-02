@@ -113,6 +113,14 @@ def conf_sample(
         ccdc_pyscript = config[samplopt]["CCDC_pyscript"]
         node = config[samplopt]["CCDC_activate_node"]
         smifile_to_sdffile(f"{number}.smi", "conformer.TMP.sdf")
+        # We get rid of fix bond torsion list since it is too restrictive...
+        # TMPMOL = Chem.SDMolSupplier("conformer.TMP.sdf")[0]
+        # matches = TMPMOL.GetSubstructMatches(Chem.MolFromSmarts("[CX3](=[OX1])[NX3]")) # amide match
+        # fixed_torsion = ""
+        # for match in matches:
+        #     idx1 = match[0] + 1# C
+        #     idx2 = match[-1] + 1# N
+        #     fixed_torsion += f"C{idx1} N{idx2}"
         currpath = os.getcwd()
         ccdc_command = f"ssh {node} \
             {CCDC_PYTHON3} {ccdc_pyscript} \
@@ -121,6 +129,8 @@ def conf_sample(
             --max_conf {max_conf} \
             --nthreads 1 \
             --max_unusual_torsions 2"
+        # if fixed_torsion:
+        #     ccdc_command += f" --lock_bond_list {fixed_torsion}"
         # Since we don't have an unlimited license, only one machine in a cluster can be activated simultaneously.
         run_external_command(ccdc_command)
         run_external_command(f"{UNICON_EXE} -i conformer.{number}.sdf -o {mol2file}", stderr=subprocess.DEVNULL)

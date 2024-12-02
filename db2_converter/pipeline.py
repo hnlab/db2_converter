@@ -39,6 +39,7 @@ from db2_converter.mol2db2_py3_strain import mol2db2 as mol2db2_38
 from db2_converter.strain.Mol2_Strain import mol2_strain
 from db2_converter.config import config
 
+from db2_converter.utils.planar_check import check_flatness
 # Basic config parameters
 UNICON_EXE = config["all"]["UNICON_EXE"]
 ANTECHAMBER = config["all"]["ANTECHAMBER"]
@@ -186,6 +187,14 @@ def PB_filter(inmol2, outmol2):
         for i in correct_indexes:
             f.write("".join(all_blocks[i]))
 
+def PB_filter(inmol2, outmol2):
+    # PB with limited modules for efficiency
+    all_mol2lines = [x for x in next_mol2_lines(inmol2)]
+    all_mols = [ Chem.MolFromMol2Block("".join(mol2lines), removeHs=False) for mol2lines in all_mol2lines]
+    out_mol2lines = [ all_mol2lines[i] for i,mol in enumerate(all_mols) if check_flatness(mol) ]
+    with open(outmol2, "w") as f:
+        for mol2lines in out_mol2lines:
+            f.write("".join(mol2lines))
 
 def mmffopt(inmol2, outmol2):
     mol2blocks = [i for i in next_mol2_lines(inmol2) if i]
