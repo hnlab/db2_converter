@@ -49,7 +49,7 @@ ANTECHAMBER = config["all"]["ANTECHAMBER"]
 # EPS = 0.05  # RMSD likelihood threshold
 EPS = 0.15
 EPS_modify = 1e-4  # lower kept, upper modified
-max_amsol_attempts = 10  # amsol attemp limit
+max_amsol_attempts = 5  # amsol attemp limit
 RMSthres = 0.5  # RMSD threshold
 sb_smarts = "[!$(*#*)&!D1]-&!@[!$(*#*)&!D1]"
 minfragsize = 3
@@ -381,7 +381,7 @@ def gen_conf(
     if rotateh:
         NrotHs, multiplier = mol2db2.mol2db2_to_numhyds(f"{zinc}.smi")
     if not keep_max_conf:
-        if not N_ring:
+        if not N_ring and not (extra_fragsmarts or extra_fragsindex):
             max_conf = max_conf_noring
         if N_ring and rotateh:  # if rotateh, we need to truncate the ensemble size
             if NrotHs in [4, 5]:
@@ -390,6 +390,8 @@ def gen_conf(
                 max_conf = max_conf // 3
         if limitconf:
             max_conf = min(get_num_confs_for_mol(smi), max_conf)
+    elif limitconf:
+        max_conf = min(get_num_confs_for_mol(smi), max_conf)
     # if keep_max_conf, the max_conf you defined is the actual max_conf for generation
     N_max_conf_in = max_conf
 
