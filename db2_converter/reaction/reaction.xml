@@ -1,0 +1,35 @@
+<!-- Qiancheng Xia, 21/5/25
+Several common reactions are included. (Now: [urea])
+Note: In a reaction SMARTS, the position of the capped carbon (cap C) in the product—not 
+      its atom index—is what determines its index in the resulting product molecule.
+-->
+<reaction>
+  <reactionClass name="urea">
+    <reactionInfo name="urea" reagentcount="2" productcount="1" core="4" productSMARTS="[NX3][CX3](=[OX1])[NX3]" chemcolor="1 2 3 1" />
+    <reagentTypeList>
+      <reagent name="isocyanate" />
+      <reagent name="amine" />
+    </reagentTypeList>
+    <reactionList>
+      <reaction reagenttype="isocyanate" cap="0" reagent2smi="N" reactionSMARTS="[NX2:1]=[CX2:2]=[OX1:3].[NX3;+0,+1;H1,H2,H3:4]>>[NX3:1][CX3:2](=[OX1:3])[NX3:4]" />
+      <reaction reagenttype="isocyanate" cap="1" reagent2smi="NC" reactionSMARTS="[NX2:1]=[CX2:2]=[OX1:3].[NX3;+0,+1;H1,H2,H3:4][CX4:5]>>[NX3:1][CX3:2](=[OX1:3])[NX3:4][CX4:5]" /> 
+      <reaction reagenttype="isocyanate" cap="2" reagent2smi="N(C)C" reactionSMARTS="[NX2;H1:1]=[CX2:2]=[OX1:3].[NX3;+0,+1;H1,H2,H3:4]([CX4:5])[CX4:6]>>[NX3:1][CX3:2](=[OX1:3])[NX3:4]([CX4:5])[CX4:6]" />
+      <reaction reagenttype="amine" cap="0" reagent2smi="N=C=O" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[NX2:1]=[CX2:2]=[OX1:3]>>[NX3,NX4:4][CX3:2](=[OX1:3])[NX3:1]" />
+      <reaction reagenttype="amine" cap="1" reagent2smi="CN=C=O" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[CX4:5][NX2:1]=[CX2:2]=[OX1:3]>>[NX3,NX4:4][CX3:2](=[OX1:3])[NX3:1][CX4:5]" />
+    </reactionList>
+    <protectList>
+      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(N~[N,O,S])]" />
+      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(NC~[N,O,S])]" />
+    </protectList>
+    <filterList>
+      <filter filterSMARTS="[C]-[Cl,Br,I]" />
+      <filter filterSMARTS="[C](=[O])-[Cl,Br,I]" />
+      <filter filterSMARTS="[S](=[O])-[Cl,Br,I]" />
+    </filterList>
+    <neutralizeList>
+      <atom reagenttype="amine" index="0" />
+    </neutralizeList>
+  </reactionClass>
+  <!-- <reactionClass name="amide">
+  </reactionClass> -->
+</reaction>
