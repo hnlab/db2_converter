@@ -329,6 +329,7 @@ def match_and_convert_mol2(
             if onlyextrafrags and (extra_fragsindex or extra_fragsmarts):
                 index_dic = dict(zip(index,list(range(len(index)))))
                 old_chem_color_dict = chem_color_dict
+                chem_color_dict = {}
                 for key in index_dic:
                     chem_color_dict[key] = old_chem_color_dict[index_dic[key]]
         all_index = f_AlignMolConformers(
