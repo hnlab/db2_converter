@@ -53,3 +53,45 @@ def db2_converter(
 
     return result_gen_conf
 
+
+def db2_converter_reagent(
+    genunit,
+    params,
+    debug=False
+):
+    workingpath = params["workingpath"]
+    outputpath = params["outputpath"]
+    max_conf = params["max_conf"]
+
+    os.chdir(workingpath)
+    zinc = genunit.name
+    smi = genunit.smi
+
+    oneparams = deepcopy(params)
+    oneparams["max_conf"] = max_conf
+    oneparams["extra_fragsindex"] = genunit.react_idxs
+    oneparams["chem_color_dict"] = genunit.chem_color_dict
+    for param in ["insmi","workingpath","outputpath","rerun","verbose"]:
+        del oneparams[param]
+
+    with open(f"{zinc}.smi", "w") as f:
+        f.write(f"{smi} {zinc}" + "\n")
+    result_gen_conf = gen_conf(
+        zinc=zinc,
+        faillist=[],
+        **oneparams,
+    )
+    os.chdir(workingpath)
+    # collect result files (db2 and mol2) to outputpath
+    if Path(f"{zinc}/all.db2.gz").exists():
+        data = gzip.open(f"{zinc}/all.db2.gz", "rt").readlines()
+        if data:
+            shutil.move(f"{zinc}/all.db2.gz", f"{outputpath}/{zinc}.db2.gz")
+            shutil.move(
+                f"{zinc}/conformer.{zinc}.fixed.mol2",
+                f"{outputpath}/conformer.{zinc}.fixed.mol2",
+            )
+    if not debug:
+        subprocess.run(f"rm -r {zinc} {zinc}.smi", shell=True)
+
+    return result_gen_conf

@@ -15,6 +15,7 @@ logger = logging.getLogger("mol2db2")
 from db2_converter.mol2db2.unionfind2 import unionFind
 from db2_converter.mol2db2 import geometry
 from db2_converter.mol2db2 import buckets
+from db2_converter.reaction.reaction import USELESSCOLOR
 
 def printClusterHelper(clusterList):
   '''stupid function used for debugging, prints list of pymol out.???.mol2 lines
@@ -510,7 +511,7 @@ class Hierarchy(object):
         if rigidNum in chemcolor_dict: # in case some rigid bodies larger than defined
           atomColor = chemcolor_dict[rigidNum]
         else:
-          atomColor = 9 # 9 is currently not used for chemical matching, can be altered if needed afterwards
+          atomColor = USELESSCOLOR
       else:
         atomColor = mol2data.colorNum[rigidNum]
       xyz = self.mol2data.atomXyz[0][rigidNum]

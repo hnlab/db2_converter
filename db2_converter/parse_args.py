@@ -1,3 +1,4 @@
+import ast
 import argparse
 from pathlib import Path
 from db2_converter.utils.conf_sample import available_methods
@@ -151,10 +152,9 @@ def parse_args(version, header):
     )
     # Chemical matching
     rigidbody_group.add_argument(
-        "--chemcolor",
-        nargs="+",
-        type=int,
-        default=[],
+        "--chem_color_dict",
+        type=ast.literal_eval,
+        default={},
         help="Chemical color used for user-defined rigid body"
     )
 
@@ -179,6 +179,30 @@ def parse_args(version, header):
         help="Rotate terminal polar hydrogens",
     )
 
+    # reaction group
+    reaction_group = parser.add_argument_group("Reaction", "Options for reaction")
+    reaction_group.add_argument(
+        "--reaction",
+        action="store_true",
+        default=False,
+        help="reaction",
+    )
+    reaction_group.add_argument(
+        "--rname",
+        type=str,
+        help="reaction name",
+        choices=["urea"]
+    )
+    reaction_group.add_argument(
+        "--rtype",
+        type=str,
+        help="reaction type",
+    )
+    reaction_group.add_argument(
+        "--rcap",
+        type=int,
+        help="reaction methyl cap number",
+    )
     # Other options
     parser.add_argument(
         "--rerun",

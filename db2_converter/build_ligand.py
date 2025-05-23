@@ -16,14 +16,15 @@ from rdkit import RDLogger
 RDLogger.DisableLog("rdApp.warning")
 
 from db2_converter.parse_args import parse_args
-from db2_converter.pipeline import sample_tp_unicon, write_enumerated_smifile
+from db2_converter.pipeline import sample_tp_unicon, write_enumerated_smifile, enumerate_genunit
 from db2_converter.utils.utils import exist_size, next_mol2_lines
 from db2_converter.mol2db2 import mol2db2
 from db2_converter.utils.match_frags import mol_to_ring_frags
 from db2_converter.utils.ccdc_confgen import activate_ccdc
-from db2_converter.db2_converter import db2_converter
+from db2_converter.db2_converter import db2_converter, db2_converter_reagent
 from db2_converter.config import check_config_avail, check_UNICON_license
 from db2_converter.pipeline import sb_smarts
+from db2_converter.reaction.reaction import parse_reaction_xmlfile,reaction
 
 def create_header():
     from db2_converter import config as cfg
@@ -98,6 +99,10 @@ def main():
         db2_converter,
         params=params,
     )
+    partial_db2_converter_reagent = partial(
+        db2_converter_reagent,
+        params=params,
+    )
 
     if args.sampletp:
         infile = sample_tp_unicon(infile)
@@ -150,19 +155,86 @@ def main():
         telapsed = "{:.4f}".format(end - start)
         return [telapsed,N_max_conf_in,N_act_conf,N_act_conf_out_rotH,N_ring,N_db2_part,faillist]
 
+
+    def newrun_reagent(genunit): # run db2_converter workflow
+        start = time.time()
+        (
+            faillist,
+            N_max_conf_in,
+            N_act_conf,
+            N_act_conf_out_rotH,
+            N_ring,
+            N_db2_part,
+        ) = partial_db2_converter_reagent(genunit=genunit)
+        end = time.time()
+        telapsed = "{:.4f}".format(end - start)
+        return [telapsed,N_max_conf_in,N_act_conf,N_act_conf_out_rotH,N_ring,N_db2_part,faillist]
+
+
+    class GenUnit():
+        smi = ""
+        name = ""
+        react_idxs = []
+        chem_color_dict = {}
+
+    genunits = []
+    genlines = []
     allfaillist = []
-    if args.checkstereo:
-        enu_infile = f"{args.workingpath}/{infile.stem}.enumerated.smi"
-        faillist = write_enumerated_smifile(
-            lines, enu_infile, args.samplopt
-        )
-        if faillist: allfaillist = faillist
-        lines = [line for line in Path(enu_infile).read_text().split("\n") if line]
+    if args.reaction:
+        xmlfile = Path(__file__).parent / "reaction/reaction.xml"
+        reactInfoObj = parse_reaction_xmlfile(
+            xmlfile = xmlfile,
+            tgt_reaction_name = args.rname,
+            tgt_reagent_type = args.rtype,
+            tgt_cap = args.rcap
+            )
+        for line in lines:
+            if line:
+                smi,name = line.split()
+            count = 0
+            for smi,react_idxs,chem_color_dict in reaction(smi,reactInfoObj):
+                name = f"{name}.{count}"
+                onegenunit = GenUnit()
+                onegenunit.smi = smi
+                onegenunit.name = name
+                onegenunit.react_idxs = react_idxs
+                onegenunit.chem_color_dict = chem_color_dict
+                genunits.append(onegenunit)
+                count += 1
+                genlines.append(f"{smi} {name}")
+            if count == 0:
+                logger.error("Reaction failed")
+                faillist
+        reaction_infile = f"{args.workingpath}/{infile.stem}.reaction.smi"
+        lines = genlines
+        with open(reaction_infile,"w") as f:
+            f.write("\n".join(genlines))
+            f.write("\n")
+
+    if not args.reaction:
+        if args.checkstereo:
+            enu_infile = f"{args.workingpath}/{infile.stem}.enumerated.smi"
+            allfaillist = write_enumerated_smifile(
+                lines, enu_infile, args.samplopt
+            )
+            lines = [line for line in Path(enu_infile).read_text().split("\n") if line]
+        else:
+            logger.info(
+                ">>> Stereochemistry Enumeration is skipped. Be careful on your results!!! "
+            )
+            lines = [line for line in infile.read_text().split("\n") if line]
     else:
-        logger.info(
-            ">>> Stereochemistry Enumeration is skipped. Be careful on your results!!! "
-        )
-        lines = [line for line in infile.read_text().split("\n") if line]
+        if args.checkstereo:
+            enu_infile = f"{args.workingpath}/{infile.stem}.enumerated.smi"
+            allfaillist, genunits = enumerate_genunit(
+                genunits, enu_infile, args.samplopt
+            )
+            lines = [line for line in Path(enu_infile).read_text().split("\n") if line]
+        else:
+            logger.info(
+                ">>> Stereochemistry Enumeration is skipped. Be careful on your results!!! "
+            )
+
     names_done = []
     # Exclude generated files in this run
     lastname = ""
@@ -186,28 +258,51 @@ def main():
 
     allsum = []
     runleft = True if args.rerun else False
-    for line in lines:
-        lsp = line.split()
-        smi = lsp[0]
-        name = lsp[1]
-        results = newrun(line)
-        telapsed,N_max_conf_in,N_act_conf,N_act_conf_out_rotH,N_ring,N_db2_part,faillist = results
-        failinfo = [onefail[-1] for onefail in faillist if onefail]
-        if failinfo: failinfo = "_".join(failinfo)
-        else: failinfo = ""
-        allsum.append([
-            name,
-            args.samplopt,
-            telapsed,
-            N_max_conf_in,
-            N_act_conf,
-            N_act_conf_out_rotH,
-            N_ring,
-            N_db2_part,
-            failinfo,
-            smi,
-        ])
-        allfaillist.append(faillist)
+    if args.reaction:
+        for genunit in genunits:
+            smi = genunit.smi
+            name = genunit.name
+            results = newrun_reagent(genunit=genunit)
+            telapsed,N_max_conf_in,N_act_conf,N_act_conf_out_rotH,N_ring,N_db2_part,faillist = results
+            failinfo = [onefail[-1] for onefail in faillist if onefail]
+            if failinfo: failinfo = "_".join(failinfo)
+            else: failinfo = ""
+            allsum.append([
+                name,
+                args.samplopt,
+                telapsed,
+                N_max_conf_in,
+                N_act_conf,
+                N_act_conf_out_rotH,
+                N_ring,
+                N_db2_part,
+                failinfo,
+                smi,
+            ])
+            allfaillist.append(faillist)
+    else:
+        for line in lines:
+            lsp = line.split()
+            smi = lsp[0]
+            name = lsp[1]
+            results = newrun(line)
+            telapsed,N_max_conf_in,N_act_conf,N_act_conf_out_rotH,N_ring,N_db2_part,faillist = results
+            failinfo = [onefail[-1] for onefail in faillist if onefail]
+            if failinfo: failinfo = "_".join(failinfo)
+            else: failinfo = ""
+            allsum.append([
+                name,
+                args.samplopt,
+                telapsed,
+                N_max_conf_in,
+                N_act_conf,
+                N_act_conf_out_rotH,
+                N_ring,
+                N_db2_part,
+                failinfo,
+                smi,
+            ])
+            allfaillist.append(faillist)
 
     # Tabulate output
     table_header = [

@@ -5,6 +5,7 @@ from pathlib import Path
 from rdkit import Chem
 from rdkit.Chem.rdForceFieldHelpers import MMFFOptimizeMolecule
 from posebusters import PoseBusters
+from copy import deepcopy
 import logging
 
 logger = logging.getLogger("DB2 generation")
@@ -75,7 +76,7 @@ def write_enumerated_smifile(inlines, outfile, method):
         "####### Enumerating possible undefined stereochemistry of input SMILES... #######"
     )
     newlines = []
-    toomany = False
+    allfaillist = []
     for line in inlines:
         try:
             smi, name = line.split()[0], line.split()[1]
@@ -91,8 +92,8 @@ def write_enumerated_smifile(inlines, outfile, method):
                     logger.error(
                         f">>> SMILES of {name} has too many stereoisomers, so skipped!"
                     )
-                    toomany = True
                     faillist = [smi, name, method, "0enumerate_many"]
+                    allfaillist.append(faillist)
         except Exception as e:
             logger.error(e)
             logger.error(f">>> SMILES of {name} cannot be parsed")
@@ -101,8 +102,48 @@ def write_enumerated_smifile(inlines, outfile, method):
     with open(outfile, "w") as f:
         for line in newlines:
             f.write(f"{line}\n")
-    if toomany:
-        return faillist
+    return allfaillist
+
+
+def enumerate_genunit(genunits, outfile, method):
+    logger.info(
+        "####### Enumerating possible undefined stereochemistry of input SMILES... #######"
+    )
+    new_genunits = []
+    newlines = []
+    allfaillist = []
+    for genunit in genunits:
+        try:
+            smi = genunit.smi
+            name = genunit.name
+            outsmis = rdk_enumerate_smi(smi)
+            if len(outsmis) == 1:
+                new_genunits.append(genunit)
+                newlines.append(f"{smi} {name}")
+            else:
+                if len(outsmis) <= 2**5:
+                    for i, outsmi in enumerate(outsmis):
+                        tmp_genunit = deepcopy(genunit)
+                        tmp_genunit.smi = outsmi
+                        tmp_genunit.name = f"{name}.{i}"
+                        new_genunits.append(tmp_genunit)
+                        newlines.append(f"{tmp_genunit.smi} {tmp_genunit.name}")
+                        logger.info(f">>> {name}.{i} {outsmi}")
+                else:
+                    logger.error(
+                        f">>> SMILES of {name} has too many stereoisomers, so skipped!"
+                    )
+                    faillist = [smi, name, method, "0enumerate_many"]
+                    allfaillist.append(faillist)
+        except Exception as e:
+            logger.error(e)
+            logger.error(f">>> SMILES of {name} cannot be parsed")
+    logger.info("####### Enumeration finished. #######\n")
+
+    with open(outfile, "w") as f:
+        for line in newlines:
+            f.write(f"{line}\n")
+    return allfaillist, new_genunits
 
 
 def fixmol2_wrapper(inmol2file, outmol2file, templatemol2file="", smiles="", samplopt=""):
@@ -150,7 +191,8 @@ def chemistrycheck(insmi, inmol2, outmol2, checkstereo=True):
             """
             Chem.AssignStereochemistryFrom3D(mol)
         smi = Chem.MolToSmiles(mol, isomericSmiles=checkstereo)
-        if smi == canonical_smiles:
+        # if smi == canonical_smiles:
+        if Chem.MolToInchi(mol) == Chem.MolToInchi(Chem.MolFromSmiles(canonical_smiles)):
             correct_indexes.append(i)
         else:
             logger.warning(f"Not consistent:\ngen {smi}\nref {canonical_smiles}")
@@ -165,7 +207,8 @@ def PB_filter(inmol2, outmol2):
     run_external_command(
         f"{UNICON_EXE} -i {inmol2} -o {inmol2}.unipb.sdf",
     )
-    buster = PoseBusters(config="mol")
+    # buster = PoseBusters(config="mol")
+    buster = PoseBusters(config="mol_trunc") # truncate, remove internal energy, flatness check
     df = buster.bust([f"{inmol2}.unipb.sdf"], full_report=True)
     # df = buster.bust([f"{inmol2}"], full_report=True)
     df["PBvalid_conf"] = (
@@ -174,9 +217,9 @@ def PB_filter(inmol2, outmol2):
         & df["bond_lengths"]
         & df["bond_angles"]
         & df["internal_steric_clash"]
-        & df["aromatic_ring_flatness"]
-        & df["double_bond_flatness"]
-        & df["internal_energy"]
+        # & df["aromatic_ring_flatness"]
+        # & df["double_bond_flatness"]
+        # & df["internal_energy"]
     )
     df = df.reset_index(drop=False)
     correct_indexes = df.index[df["PBvalid_conf"]].tolist()
@@ -187,14 +230,14 @@ def PB_filter(inmol2, outmol2):
         for i in correct_indexes:
             f.write("".join(all_blocks[i]))
 
-def PB_filter(inmol2, outmol2):
-    # PB with limited modules for efficiency
-    all_mol2lines = [x for x in next_mol2_lines(inmol2)]
-    all_mols = [ Chem.MolFromMol2Block("".join(mol2lines), removeHs=False) for mol2lines in all_mol2lines]
-    out_mol2lines = [ all_mol2lines[i] for i,mol in enumerate(all_mols) if check_flatness(mol) ]
-    with open(outmol2, "w") as f:
-        for mol2lines in out_mol2lines:
-            f.write("".join(mol2lines))
+# def PB_filter(inmol2, outmol2):
+#     # PB with limited modules for efficiency
+#     all_mol2lines = [x for x in next_mol2_lines(inmol2)]
+#     all_mols = [ Chem.MolFromMol2Block("".join(mol2lines), removeHs=False) for mol2lines in all_mol2lines]
+#     out_mol2lines = [ all_mol2lines[i] for i,mol in enumerate(all_mols) if check_flatness(mol) ]
+#     with open(outmol2, "w") as f:
+#         for mol2lines in out_mol2lines:
+#             f.write("".join(mol2lines))
 
 def mmffopt(inmol2, outmol2):
     mol2blocks = [i for i in next_mol2_lines(inmol2) if i]
@@ -227,12 +270,13 @@ def match_and_convert_mol2(
     mol2file,
     extra_fragsindex=[],
     extra_fragsmarts="",
-    chemcolor=[],
+    chem_color_dict={},
     onlyextrafrags=False,
     reseth=True,
     rotateh=True,
     prefix="output",
     dock38=False,
+    reaction=False,
 ):
     all_blocks = [x for x in next_mol2_lines(mol2file)]
     mol = Chem.MolFromMol2Block("".join(all_blocks[0]), removeHs=False)
@@ -281,6 +325,12 @@ def match_and_convert_mol2(
     for dirname in ["sdf", "mol2", "db2"]:
         Path(dirname).mkdir(exist_ok=True)
     for index in fragsindex:
+        if not reaction and chem_color_dict:
+            if onlyextrafrags and (extra_fragsindex or extra_fragsmarts):
+                index_dic = dict(zip(index,list(range(len(index)))))
+                old_chem_color_dict = chem_color_dict
+                for key in index_dic:
+                    chem_color_dict[key] = old_chem_color_dict[index_dic[key]]
         all_index = f_AlignMolConformers(
             mol_withconfs,
             atomIds=index,
@@ -292,7 +342,6 @@ def match_and_convert_mol2(
         # all_index is a list of lists, each list with len>1 means a cluster
         logger.debug("Rigid body index: %s", index)
         logger.debug("Conformers used id: %s", all_index)
-        chem_color_dict = dict(zip(index,chemcolor))
         for conf_index in all_index:
             writer = Chem.SDWriter(f"sdf/{prefix}.{i}.sdf")
             for conf in conf_index:
@@ -358,7 +407,7 @@ def gen_conf(
     limitconf=False,
     extra_fragsindex=[],
     extra_fragsmarts="",
-    chemcolor=[],
+    chem_color_dict={},
     onlyextrafrags=False,
     keep_max_conf=False,
     reseth=True,
@@ -369,6 +418,7 @@ def gen_conf(
     confgenx_option="",
     mergeiso=True,
     dock38=False,
+    reaction=False,
     **kwargs
 ):
     logger.info(f"############### Now dealing with {zinc}... ###############")
@@ -573,11 +623,12 @@ def gen_conf(
         extra_fragsindex=extra_fragsindex,
         extra_fragsmarts=extra_fragsmarts,
         onlyextrafrags=onlyextrafrags,
-        chemcolor=chemcolor,
+        chem_color_dict=chem_color_dict,
         reseth=reseth,
         rotateh=rotateh,
         prefix="output",
-        dock38=dock38
+        dock38=dock38,
+        reaction=reaction
     )
     # collect
     if Path("db2").exists():
