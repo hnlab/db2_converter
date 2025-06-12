@@ -16,6 +16,7 @@ from db2_converter.mol2db2 import shortestpaths  # from one point to all others
 from db2_converter.mol2db2 import geometry  # for distance function
 from db2_converter.mol2db2 import unionfind2
 from db2_converter.mol2db2 import divisive_clustering
+from db2_converter.reaction.reaction import LINKHEAVYCOLOR, LINKHYDROCOLOR, REAOTHERCOLOR, CAPCOLOR, DEFAULTCOLOR
 
 #################################################################################################################
 #################################################################################################################
@@ -428,6 +429,56 @@ class Mol2(object):
     self.colorNum = [] #map from atom to colors
     for atomNumber in self.atomNum:
       self.colorNum.append(colorConverter.convertMol2color(self, atomNumber))
+  
+  def updateReagentColors(self, chem_color_dict={}):
+    colored_atomNumber_color_tuple_list = []
+    capped_C_atomNumber_list = []
+    capped_C_bonded_atomNumber_list = []
+    # add default color to all atoms not defined in chem_color_dict
+    # also, mark the capped C atomNumber
+    for atomNumber in range(len(self.colorNum)): # or range(len(self.atomNum))
+      if atomNumber in chem_color_dict: # in case some rigid bodies larger than defined
+        atomColor = chem_color_dict[atomNumber]
+        colored_atomNumber_color_tuple_list.append((atomNumber,atomColor))
+      else:
+        atomColor = DEFAULTCOLOR
+      if atomColor == CAPCOLOR:
+        capped_C_atomNumber_list.append(atomNumber)
+      self.colorNum[atomNumber] = atomColor
+    # add cap color of hydrogen
+    for atomNumber in capped_C_atomNumber_list:
+      for neighNumber, bondType in self.atomBonds[atomNumber]:
+        # just to ensure we do not operate on non-hydrogen atoms
+        capped_C_bonded_atomNumber_list.append(neighNumber)
+        if self.atomType[neighNumber] != "H": # this is a methyl cap, no need
+          continue
+        # just to ensure we do not operate on non-hydrogen atoms
+        self.colorNum[neighNumber] = CAPCOLOR
+    # add bonded color of the first atom
+    colored_atomNumber_list = [ atomNumber for atomNumber, color in colored_atomNumber_color_tuple_list ]
+    for atomNumber, color in colored_atomNumber_color_tuple_list:
+      if atomNumber in capped_C_bonded_atomNumber_list: # outward capped part
+        continue
+      if color != 1: # we define the first or the end atoms of reaction group as 1
+        continue
+      # inward part
+      for neighNumber, bondType in self.atomBonds[atomNumber]:
+        # filter atoms within reaction group
+        if neighNumber in colored_atomNumber_list:
+          continue
+        # color the atoms that directly bond to the reactive atom
+        if self.atomType[neighNumber][0] != "H":
+          self.colorNum[neighNumber] = LINKHEAVYCOLOR
+        else:
+          self.colorNum[neighNumber] = LINKHYDROCOLOR
+    # add color to other atoms (e.g. hydrogens) with the addition of reaction group
+    for atomNumber, color in colored_atomNumber_color_tuple_list:
+      if color == CAPCOLOR:
+        continue
+      for neighNumber, bondType in self.atomBonds[atomNumber]:
+        if self.colorNum[neighNumber] == DEFAULTCOLOR:
+          self.colorNum[neighNumber] = REAOTHERCOLOR
+
 
   def countConfs(self):
     '''returns the number of conformations in the file'''

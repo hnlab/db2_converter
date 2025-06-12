@@ -13,7 +13,7 @@ Note: In a reaction SMARTS, the position of the capped carbon (cap C) in the pro
     <reactionList>
       <reaction reagenttype="isocyanate" cap="0" reagent2smi="N" reactionSMARTS="[NX2:1]=[CX2:2]=[OX1:3].[NX3;+0,+1;H1,H2,H3:4]>>[NX3:1][CX3:2](=[OX1:3])[NX3:4]" />
       <reaction reagenttype="isocyanate" cap="1" reagent2smi="NC" reactionSMARTS="[NX2:1]=[CX2:2]=[OX1:3].[NX3;+0,+1;H1,H2,H3:4][CX4:5]>>[NX3:1][CX3:2](=[OX1:3])[NX3:4][CX4:5]" /> 
-      <reaction reagenttype="isocyanate" cap="2" reagent2smi="N(C)C" reactionSMARTS="[NX2;H1:1]=[CX2:2]=[OX1:3].[NX3;+0,+1;H1,H2,H3:4]([CX4:5])[CX4:6]>>[NX3:1][CX3:2](=[OX1:3])[NX3:4]([CX4:5])[CX4:6]" />
+      <reaction reagenttype="isocyanate" cap="2" reagent2smi="N(C)C" reactionSMARTS="[NX2:1]=[CX2:2]=[OX1:3].[NX3;+0,+1;H1,H2,H3:4]([CX4:5])[CX4:6]>>[NX3:1][CX3:2](=[OX1:3])[NX3:4]([CX4:5])[CX4:6]" />
       <reaction reagenttype="amine" cap="0" reagent2smi="N=C=O" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[NX2:1]=[CX2:2]=[OX1:3]>>[NX3,NX4:4][CX3:2](=[OX1:3])[NX3:1]" />
       <reaction reagenttype="amine" cap="1" reagent2smi="CN=C=O" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[CX4:5][NX2:1]=[CX2:2]=[OX1:3]>>[NX3,NX4:4][CX3:2](=[OX1:3])[NX3:1][CX4:5]" />
     </reactionList>

@@ -7,8 +7,11 @@ from rdkit.Chem import AllChem
 
 logger = logging.getLogger("Reaction")
 
-CAPCOLOR=21
-USELESSCOLOR=22
+REAOTHERCOLOR=21
+CAPCOLOR=22
+DEFAULTCOLOR=23
+LINKHEAVYCOLOR=24
+LINKHYDROCOLOR=25
 
 ReactionInfoClass = namedtuple(
     "ReactionInfo",

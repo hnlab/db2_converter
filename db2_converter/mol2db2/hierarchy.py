@@ -15,7 +15,7 @@ logger = logging.getLogger("mol2db2")
 from db2_converter.mol2db2.unionfind2 import unionFind
 from db2_converter.mol2db2 import geometry
 from db2_converter.mol2db2 import buckets
-from db2_converter.reaction.reaction import USELESSCOLOR
+from db2_converter.reaction.reaction import DEFAULTCOLOR
 
 def printClusterHelper(clusterList):
   '''stupid function used for debugging, prints list of pymol out.???.mol2 lines
@@ -451,7 +451,7 @@ class Hierarchy(object):
         outFile.write('T %2d %8s\n' % (colorKey, colorName))
 
   def _allButSetWriter(
-      self, outFile, mol2data, solvdata, setsTotal, clustersTotal=0, onlyextrafrags=False, chemcolor_dict={}):
+      self, outFile, mol2data, solvdata, setsTotal, clustersTotal=0, onlyextrafrags=False, chem_color_dict={}):
     '''writes the M A B X R and C lines'''
     #now the molecule section, facts about the whole molecule, 5 lines
     outFile.write(
@@ -506,12 +506,12 @@ class Hierarchy(object):
     self.rigidNumSeen = 0
     for rigidNum in self.heavyRigidAtomNums:
       self.rigidNumSeen += 1
-      if onlyextrafrags and chemcolor_dict:
-        logger.info(f"Use user-defined chemical colors: {chemcolor_dict}")
-        if rigidNum in chemcolor_dict: # in case some rigid bodies larger than defined
-          atomColor = chemcolor_dict[rigidNum]
+      if onlyextrafrags and chem_color_dict:
+        logger.info(f"Use user-defined chemical colors: {chem_color_dict}")
+        if rigidNum in chem_color_dict: # in case some rigid bodies larger than defined
+          atomColor = chem_color_dict[rigidNum]
         else:
-          atomColor = USELESSCOLOR
+          atomColor = DEFAULTCOLOR
       else:
         atomColor = mol2data.colorNum[rigidNum]
       xyz = self.mol2data.atomXyz[0][rigidNum]

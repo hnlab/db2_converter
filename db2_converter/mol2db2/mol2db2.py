@@ -14,7 +14,7 @@ from db2_converter.mol2db2 import hydrogens
 from db2_converter.mol2db2.hierarchy import TooBigError
 from db2_converter.utils.utils import exist_size
 
-def mol2db2(options):
+def mol2db2(options, chem_color_dict={}):
   '''function that does all the actual work you may want to do to convert a
   mol2 file and solv file into a db2 file.'''
   if options.timeit:
@@ -24,6 +24,7 @@ def mol2db2(options):
   mol2data = mol2.Mol2(options.mol2file, nameFileName=options.namefile)
   mol2data.convertDockTypes(options.atomtypefile) #sybyl2dock.AtomConverter
   mol2data.addColors(options.colortablefile)
+  mol2data.updateReagentColors(chem_color_dict)
   solvdata = solv.Solv(options.solvfile)
   if options.covalent:
     covAtomType,indicesList = mol2data.removeCovalentDummyAtom()
@@ -177,7 +178,7 @@ def mol2db2_main(
   options.rotateh = rotateh
 
   logger.debug("verbose debugging of mol2db2 requested.")
-  timeStart, hierarchyDatas = mol2db2(options)  # main program call
+  timeStart, hierarchyDatas = mol2db2(options, chem_color_dict)  # main program call
   finishedHierarchyDatas = mol2db2writeDb2(
       options, timeStart, hierarchyDatas, onlyextrafrags, chem_color_dict)  # write output
   for hierarchyData in finishedHierarchyDatas:

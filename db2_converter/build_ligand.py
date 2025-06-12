@@ -203,8 +203,7 @@ def main():
                 count += 1
                 genlines.append(f"{smi} {name}")
             if count == 0:
-                logger.error("Reaction failed")
-                faillist
+                logger.error(f"Reaction failed {name}")
         reaction_infile = f"{args.workingpath}/{infile.stem}.reaction.smi"
         lines = genlines
         with open(reaction_infile,"w") as f:
