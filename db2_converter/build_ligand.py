@@ -17,14 +17,14 @@ RDLogger.DisableLog("rdApp.warning")
 
 from db2_converter.parse_args import parse_args
 from db2_converter.pipeline import sample_tp_unicon, write_enumerated_smifile, enumerate_genunit
-from db2_converter.utils.utils import exist_size, next_mol2_lines
+from db2_converter.utils.utils import exist_size, next_mol2_lines, raise_errlog
 from db2_converter.mol2db2 import mol2db2
 from db2_converter.utils.match_frags import mol_to_ring_frags
 from db2_converter.utils.ccdc_confgen import activate_ccdc
 from db2_converter.db2_converter import db2_converter, db2_converter_reagent
 from db2_converter.config import check_config_avail, check_UNICON_license
 from db2_converter.pipeline import sb_smarts
-from db2_converter.reaction.reaction import parse_reaction_xmlfile,reaction
+from db2_converter.reaction.reaction import XMLFILE, parse_reaction_xmlfile,reaction
 
 def create_header():
     from db2_converter import config as cfg
@@ -181,9 +181,8 @@ def main():
     genlines = []
     allfaillist = []
     if args.reaction:
-        xmlfile = Path(__file__).parent / "reaction/reaction.xml"
         reactInfoObj = parse_reaction_xmlfile(
-            xmlfile = xmlfile,
+            xmlfile = XMLFILE,
             tgt_reaction_name = args.rname,
             tgt_reagent_type = args.rtype,
             tgt_cap = args.rcap
@@ -193,17 +192,19 @@ def main():
                 smi,name = line.split()
             count = 0
             for smi,react_idxs,chem_color_dict in reaction(smi,reactInfoObj):
-                name = f"{name}.{count}"
                 onegenunit = GenUnit()
                 onegenunit.smi = smi
-                onegenunit.name = name
+                onegenunit.name = f"{name}.{count}"
                 onegenunit.react_idxs = react_idxs
                 onegenunit.chem_color_dict = chem_color_dict
                 genunits.append(onegenunit)
+                genlines.append(f"{onegenunit.smi} {onegenunit.name}")
                 count += 1
-                genlines.append(f"{smi} {name}")
             if count == 0:
-                logger.error(f"Reaction failed {name}")
+                error = "00reaction_fail"
+                faillist = [smi, name, args.samplopt, error]
+                allfaillist.append(name)
+                raise_errlog(error, logger, name=name)
         reaction_infile = f"{args.workingpath}/{infile.stem}.reaction.smi"
         lines = genlines
         with open(reaction_infile,"w") as f:
@@ -214,7 +215,7 @@ def main():
         if args.checkstereo:
             enu_infile = f"{args.workingpath}/{infile.stem}.enumerated.smi"
             allfaillist = write_enumerated_smifile(
-                lines, enu_infile, args.samplopt
+                lines, enu_infile, args.samplopt, allfaillist
             )
             lines = [line for line in Path(enu_infile).read_text().split("\n") if line]
         else:
@@ -226,7 +227,7 @@ def main():
         if args.checkstereo:
             enu_infile = f"{args.workingpath}/{infile.stem}.enumerated.smi"
             allfaillist, genunits = enumerate_genunit(
-                genunits, enu_infile, args.samplopt
+                genunits, enu_infile, args.samplopt, allfaillist
             )
             lines = [line for line in Path(enu_infile).read_text().split("\n") if line]
         else:
@@ -247,9 +248,9 @@ def main():
                     if line.startswith(f"############### Finished with {lastname}"): # have finished
                         names_done.append(lastname)
                         lastname = ""
-            print("names_done",names_done)
+            logger.debug(f"names_done: {names_done}")
             lines = [ line for line in lines if line.split()[1] not in names_done ]
-            print("lines",lines)
+            logger.debug(f"lines: {lines}")
             if not lines:
                 logger.info(">>> All DB2 generation task has completed in the last run. Exit...")
                 return

@@ -71,12 +71,11 @@ def sample_tp_unicon(infile,outfile=""):
     return Path(outfile)
 
 
-def write_enumerated_smifile(inlines, outfile, method):
+def write_enumerated_smifile(inlines, outfile, method, allfaillist):
     logger.info(
         "####### Enumerating possible undefined stereochemistry of input SMILES... #######"
     )
     newlines = []
-    allfaillist = []
     for line in inlines:
         try:
             smi, name = line.split()[0], line.split()[1]
@@ -89,11 +88,10 @@ def write_enumerated_smifile(inlines, outfile, method):
                         newlines.append(f"{outsmi} {name}.{i}")
                         logger.info(f">>> {name}.{i} {outsmi}")
                 else:
-                    logger.error(
-                        f">>> SMILES of {name} has too many stereoisomers, so skipped!"
-                    )
-                    faillist = [smi, name, method, "0enumerate_many"]
+                    error = "0enumerate_many"
+                    faillist = [smi, name, method, error]
                     allfaillist.append(faillist)
+                    raise_errlog(error,logger,name=name)
         except Exception as e:
             logger.error(e)
             logger.error(f">>> SMILES of {name} cannot be parsed")
@@ -105,13 +103,12 @@ def write_enumerated_smifile(inlines, outfile, method):
     return allfaillist
 
 
-def enumerate_genunit(genunits, outfile, method):
+def enumerate_genunit(genunits, outfile, method, allfaillist):
     logger.info(
         "####### Enumerating possible undefined stereochemistry of input SMILES... #######"
     )
     new_genunits = []
     newlines = []
-    allfaillist = []
     for genunit in genunits:
         try:
             smi = genunit.smi
@@ -130,11 +127,10 @@ def enumerate_genunit(genunits, outfile, method):
                         newlines.append(f"{tmp_genunit.smi} {tmp_genunit.name}")
                         logger.info(f">>> {name}.{i} {outsmi}")
                 else:
-                    logger.error(
-                        f">>> SMILES of {name} has too many stereoisomers, so skipped!"
-                    )
-                    faillist = [smi, name, method, "0enumerate_many"]
+                    error = "0enumerate_many"
+                    faillist = [smi, name, method, error]
                     allfaillist.append(faillist)
+                    raise_errlog(error,logger,name=name)
         except Exception as e:
             logger.error(e)
             logger.error(f">>> SMILES of {name} cannot be parsed")
@@ -278,6 +274,10 @@ def match_and_convert_mol2(
     dock38=False,
     reaction=False,
 ):
+    logger.debug(f"extra_fragsindex: {extra_fragsindex}")
+    logger.debug(f"extra_fragsmarts: {extra_fragsmarts}")
+    logger.debug(f"chem_color_dict: {chem_color_dict}")
+    logger.debug(f"onlyextrafrags: {onlyextrafrags}")
     all_blocks = [x for x in next_mol2_lines(mol2file)]
     mol = Chem.MolFromMol2Block("".join(all_blocks[0]), removeHs=False)
     # Get atom name to serial number mapping
@@ -317,18 +317,17 @@ def match_and_convert_mol2(
         logger.info(
             f">>>>>> Will use central atom and its 1st neighbors {fragsindex}..."
         )
-    logger.debug(f"fragsindex: {fragsindex}")
 
     mol_withconfs = embed_blocks_molconformer(all_blocks, removeHs=False)
     # Aligning every frag
     i = 0
     for dirname in ["sdf", "mol2", "db2"]:
         Path(dirname).mkdir(exist_ok=True)
+    old_chem_color_dict = chem_color_dict
     for index in fragsindex:
-        if not reaction and chem_color_dict:
+        if not reaction and old_chem_color_dict:
             if onlyextrafrags and (extra_fragsindex or extra_fragsmarts):
                 index_dic = dict(zip(index,list(range(len(index)))))
-                old_chem_color_dict = chem_color_dict
                 chem_color_dict = {}
                 for key in index_dic:
                     chem_color_dict[key] = old_chem_color_dict[index_dic[key]]

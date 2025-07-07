@@ -4,8 +4,65 @@ Note: In a reaction SMARTS, the position of the capped carbon (cap C) in the pro
       its atom index—is what determines its index in the resulting product molecule.
 -->
 <reaction>
+
+  <reactionClass name="amide">
+    <reactionInfo name="amide" reagentcount="2" productcount="2" core="3" productSMARTS="[CX3](=[OX1])[NX3]" productCHGSMARTS="[CX3](=[OX1])[NX3,NX4;+0,+1;H1,H2,H3]" chemcolor="1 2 3" />
+    <reagentTypeList>
+      <reagent name="carboxylate" />
+      <reagent name="amine" />
+    </reagentTypeList>
+    <reactionList>
+      <reaction reagenttype="carboxylate" cap="0" reagent2smi="N" reactionSMARTS="[CX3:1](=[OX1:2])[OX1,OX2;-1,+0;H0,H1:3].[NX3:4]>>[CX3:1](=[OX1:2])[NX3:4].[OX1,OX2:3]" />
+      <reaction reagenttype="carboxylate" cap="1" reagent2smi="NC" reactionSMARTS="[CX3:1](=[OX1:2])[OX1,OX2;-1,+0;H0,H1:3].[NX3:4][CX4:5]>>[CX3:1](=[OX1:2])[NX3:4][CX4:5].[OX1,OX2:3]" />
+      <reaction reagenttype="carboxylate" cap="2" reagent2smi="N(C)C" reactionSMARTS="[CX3:1](=[OX1:2])[OX1,OX2;-1,+0;H0,H1:3].[NX3:4]([CX4:5])[CX4:6]>>[CX3:1](=[OX1:2])[NX3:4]([CX4:5])[CX4:6].[OX1,OX2:3]" />
+      <reaction reagenttype="amine" cap="0" reagent2smi="C(=O)O" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[CX3:1](=[OX1:2])[OX2:3]>>[CX3:1](=[OX1:2])[NX3,NX4:4].[OX2:3]" />
+      <reaction reagenttype="amine" cap="1" reagent2smi="CC(=O)O" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[CX4:5][CX3:1](=[OX1:2])[OX2:3]>>[CX3:1](=[OX1:2])([NX3,NX4:4])[CX4:5].[OX2:3]" />
+    </reactionList>
+    <forwardReaction reactionSMARTS="[CX3:1](=[OX1:2])[OX1,OX2;-1,+0;H0,H1:3].[NX3,NX4;+0,+1;H1,H2,H3:4]>>[CX3:1](=[OX1:2])[NX3,NX4:4].[OX1,OX2:3]" />
+    <reverseReaction reactionSMARTS="[CX3:1](=[OX1:2])[NX3:3]>>[CX3:1](=[OX1:2])[OX2].[NX3:3]" />
+    <protectList>
+      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(N~[N,O,S])]" />
+      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(NC~[N,O,S])]" />
+    </protectList>
+    <filterList>
+      <filter filterSMARTS="[C]-[Cl,Br,I]" />
+      <filter filterSMARTS="[C](=[O])-[Cl,Br,I]" />
+      <filter filterSMARTS="[S](=[O])-[Cl,Br,I]" />
+    </filterList>
+    <neutralizeList>
+      <atom reagenttype="amine" index="2" />
+    </neutralizeList>
+  </reactionClass>
+
+  <reactionClass name="ester">
+    <reactionInfo name="ester" reagentcount="2" productcount="2" core="3" productSMARTS="[CX3](=[OX1])[OX2]" productCHGSMARTS="[CX3](=[OX1])[OX1,OX2;-1,+0;H0,H1]" chemcolor="1 2 3" />
+    <reagentTypeList>
+      <reagent name="carboxylate" />
+      <reagent name="alcohol" />
+    </reagentTypeList>
+    <reactionList>
+      <reaction reagenttype="carboxylate" cap="0" reagent2smi="O" reactionSMARTS="[CX3:1](=[OX1:2])[OX1,OX2;-1,+0;H0,H1:3].[OX2;H1,H2:4]>>[CX3:1](=[OX1:2])[OX2:4].[OX1,OX2:3]" />
+      <reaction reagenttype="carboxylate" cap="1" reagent2smi="OC" reactionSMARTS="[CX3:1](=[OX1:2])[OX1,OX2;-1,+0;H0,H1:3].[OX2;H1,H2:4][CX4:5]>>[CX3:1](=[OX1:2])[OX2:4][CX4:5].[OX1,OX2:3]" />
+      <reaction reagenttype="alcohol" cap="0" reagent2smi="C(=O)O" reactionSMARTS="[OX2;H1,H2:4].[CX3:1](=[OX1:2])[OX1,OX2;-1,+0;H0,H1:3]>>[CX3:1](=[OX1:2])[OX2:4].[OX1,OX2:3]" />
+      <reaction reagenttype="alcohol" cap="1" reagent2smi="CC(=O)O" reactionSMARTS="[OX2;H1,H2:4].[CX4:5][CX3:1](=[OX1:2])[OX1,OX2;-1,+0;H0,H1:3]>>[CX3:1](=[OX1:2])([OX2:4])[CX4:5].[OX1,OX2:3]" />
+    </reactionList>
+    <forwardReaction reactionSMARTS="[CX3:1](=[OX1:2])[OX1,OX2;-1,+0;H0,H1:3].[OX2;H1,H2:4]>>[CX3:1](=[OX1:2])[OX2:4].[OX1,OX2:3]" />
+    <reverseReaction reactionSMARTS="[CX3:1](=[OX1:2])[OX2:3]>>[CX3:1](=[OX1:2])[OX2].[OX2:3]" />
+    <protectList>
+      <protect reagenttype="alcohol" protectidx="0" protectSMARTS="[O;$(O~[N,O,S])]" />
+      <protect reagenttype="alcohol" protectidx="0" protectSMARTS="[O;$(OC~[N,O,S])]" />
+    </protectList>
+    <filterList>
+      <filter filterSMARTS="[C]-[Cl,Br,I]" />
+      <filter filterSMARTS="[C](=[O])-[Cl,Br,I]" />
+      <filter filterSMARTS="[S](=[O])-[Cl,Br,I]" />
+    </filterList>
+    <neutralizeList>
+    </neutralizeList>
+  </reactionClass>
+
   <reactionClass name="urea">
-    <reactionInfo name="urea" reagentcount="2" productcount="1" core="4" productSMARTS="[NX3][CX3](=[OX1])[NX3]" chemcolor="1 2 3 1" />
+    <reactionInfo name="urea" reagentcount="2" productcount="1" core="4" productSMARTS="[NX3][CX3](=[OX1])[NX3]" productCHGSMARTS="[NX3,NX4;+0,+1;H1,H2,H3][CX3](=[OX1])[NX3,NX4;+0,+1;H1,H2,H3]" chemcolor="1 2 3 1" />
     <reagentTypeList>
       <reagent name="isocyanate" />
       <reagent name="amine" />
@@ -17,6 +74,8 @@ Note: In a reaction SMARTS, the position of the capped carbon (cap C) in the pro
       <reaction reagenttype="amine" cap="0" reagent2smi="N=C=O" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[NX2:1]=[CX2:2]=[OX1:3]>>[NX3,NX4:4][CX3:2](=[OX1:3])[NX3:1]" />
       <reaction reagenttype="amine" cap="1" reagent2smi="CN=C=O" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[CX4:5][NX2:1]=[CX2:2]=[OX1:3]>>[NX3,NX4:4][CX3:2](=[OX1:3])[NX3:1][CX4:5]" />
     </reactionList>
+    <forwardReaction reactionSMARTS="[NX2:1]=[CX2:2]=[OX1:3].[NX3;+0,+1;H1,H2,H3:4]>>[NX3:1][CX3:2](=[OX1:3])[NX3:4]" />
+    <reverseReaction reactionSMARTS="[NX3:1][CX3:2](=[OX1:3])[NX3:4]>>[NX2:1]=[CX2:2]=[OX1:3].[NX3:4]" />
     <protectList>
       <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(N~[N,O,S])]" />
       <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(NC~[N,O,S])]" />
@@ -30,6 +89,63 @@ Note: In a reaction SMARTS, the position of the capped carbon (cap C) in the pro
       <atom reagenttype="amine" index="0" />
     </neutralizeList>
   </reactionClass>
-  <!-- <reactionClass name="amide">
-  </reactionClass> -->
+
+  <reactionClass name="thiourea">
+    <reactionInfo name="thiourea" reagentcount="2" productcount="1" core="4" productSMARTS="[NX3][CX3](=[SX1])[NX3]" productCHGSMARTS="[NX3,NX4;+0,+1;H1,H2,H3][CX3](=[SX1])[NX3,NX4;+0,+1;H1,H2,H3]" chemcolor="1 2 3 1" />
+    <reagentTypeList>
+      <reagent name="isothiocyanate" />
+      <reagent name="amine" />
+    </reagentTypeList>
+    <reactionList>
+      <reaction reagenttype="isothiocyanate" cap="0" reagent2smi="N" reactionSMARTS="[NX2:1]=[CX2:2]=[SX1:3].[NX3;+0,+1;H1,H2,H3:4]>>[NX3:1][CX3:2](=[SX1:3])[NX3:4]" />
+      <reaction reagenttype="isothiocyanate" cap="1" reagent2smi="NC" reactionSMARTS="[NX2:1]=[CX2:2]=[SX1:3].[NX3;+0,+1;H1,H2,H3:4][CX4:5]>>[NX3:1][CX3:2](=[SX1:3])[NX3:4][CX4:5]" /> 
+      <reaction reagenttype="isothiocyanate" cap="2" reagent2smi="N(C)C" reactionSMARTS="[NX2:1]=[CX2:2]=[SX1:3].[NX3;+0,+1;H1,H2,H3:4]([CX4:5])[CX4:6]>>[NX3:1][CX3:2](=[SX1:3])[NX3:4]([CX4:5])[CX4:6]" />
+      <reaction reagenttype="amine" cap="0" reagent2smi="N=C=S" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[NX2:1]=[CX2:2]=[SX1:3]>>[NX3,NX4:4][CX3:2](=[SX1:3])[NX3:1]" />
+      <reaction reagenttype="amine" cap="1" reagent2smi="CN=C=S" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[CX4:5][NX2:1]=[CX2:2]=[SX1:3]>>[NX3,NX4:4][CX3:2](=[SX1:3])[NX3:1][CX4:5]" />
+    </reactionList>
+    <forwardReaction reactionSMARTS="[NX2:1]=[CX2:2]=[SX1:3].[NX3;+0,+1;H1,H2,H3:4]>>[NX3:1][CX3:2](=[SX1:3])[NX3:4]" />
+    <reverseReaction reactionSMARTS="[NX3:1][CX3:2](=[SX1:3])[NX3:4]>>[NX2:1]=[CX2:2]=[SX1:3].[NX3:4]" />
+    <protectList>
+      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(N~[N,O,S])]" />
+      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(NC~[N,O,S])]" />
+    </protectList>
+    <filterList>
+      <filter filterSMARTS="[C]-[Cl,Br,I]" />
+      <filter filterSMARTS="[C](=[O])-[Cl,Br,I]" />
+      <filter filterSMARTS="[S](=[O])-[Cl,Br,I]" />
+    </filterList>
+    <neutralizeList>
+      <atom reagenttype="amine" index="0" />
+    </neutralizeList>
+  </reactionClass>
+
+  <reactionClass name="sulfoamide">
+    <reactionInfo name="sulfoamide" reagentcount="2" productcount="2" core="4" productSMARTS="[SX4](=[OX1])(=[OX1])[NX3]" productCHGSMARTS="[SX4](=[OX1])(=[OX1])[NX3,NX4;+0,+1;H1,H2,H3]" chemcolor="1 2 2 3" />
+    <reagentTypeList>
+      <reagent name="sulfonyl_chloride" />
+      <reagent name="amine" />
+    </reagentTypeList>
+    <reactionList>
+      <reaction reagenttype="sulfonyl_chloride" cap="0" reagent2smi="N" reactionSMARTS="[SX4:1](=[OX1:2])(=[OX1:3])[ClX1:8].[NX3:4]>>[SX4:1](=[OX1:2])(=[OX1:3])[NX3:4].[ClX1:8]" />
+      <reaction reagenttype="sulfonyl_chloride" cap="1" reagent2smi="NC" reactionSMARTS="[SX4:1](=[OX1:2])(=[OX1:3])[ClX1:8].[NX3:4][CX4:5]>>[SX4:1](=[OX1:2])(=[OX1:3])[NX3:4][CX4:5].[ClX1:8]" />
+      <reaction reagenttype="sulfonyl_chloride" cap="2" reagent2smi="N(C)C" reactionSMARTS="[SX4:1](=[OX1:2])(=[OX1:3])[ClX1:8].[NX3:4]([CX4:5])[CX4:6]>>[SX4:1](=[OX1:2])(=[OX1:3])[NX3:4]([CX4:5])[CX4:6].[ClX1:8]" />
+      <reaction reagenttype="amine" cap="0" reagent2smi="S(=O)(=O)Cl" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[SX4:1](=[OX1:2])(=[OX1:3])[ClX1:8]>>[SX4:1](=[OX1:2])(=[OX1:3])[NX3,NX4:4].[ClX1:8]" />
+      <reaction reagenttype="amine" cap="1" reagent2smi="CS(=O)(=O)Cl" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[CX4:5][SX4:1](=[OX1:2])(=[OX1:3])[ClX1:8]>>[SX4:1](=[OX1:2])(=[OX1:3])([NX3,NX4:4])[CX4:5].[ClX1:8]" />
+    </reactionList>
+    <forwardReaction reactionSMARTS="[SX4:1](=[OX1:2])(=[OX1:3])[ClX1:8].[NX3:4]>>[SX4:1](=[OX1:2])(=[OX1:3])[NX3:4].[ClX1:8]" />
+    <reverseReaction reactionSMARTS="[SX4:1](=[OX1:2])(=[OX1:3])[NX3:4]>>[SX4:1](=[OX1:2])(=[OX1:3])[Cl].[NX3:4]" />
+    <protectList>
+      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(N~[N,O,S])]" />
+      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(NC~[N,O,S])]" />
+    </protectList>
+    <filterList>
+      <filter filterSMARTS="[C]-[Cl,Br,I]" />
+      <filter filterSMARTS="[C](=[O])-[Cl,Br,I]" />
+      <filter filterSMARTS="[S](=[O])-[Cl,Br,I]" />
+    </filterList>
+    <neutralizeList>
+      <atom reagenttype="amine" index="3" />
+    </neutralizeList>
+  </reactionClass>
+
 </reaction>

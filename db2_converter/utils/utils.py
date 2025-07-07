@@ -121,8 +121,12 @@ def check_type(name, type):
     except:
         return
 
-def raise_errlog(error,logger):
+def raise_errlog(error,logger,name=""):
     error_dict = {
+        "00reaction_fail":
+            f">>> Reaction failed for {name}",
+        "0enumerate_many":
+            f">>> SMILES of {name} has too many stereoisomers, so skipped!",
         "1generate":
             ">>> No conformers sampled, please check your input smi.",
         "2fixmol2":

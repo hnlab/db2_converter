@@ -191,7 +191,7 @@ def parse_args(version, header):
         "--rname",
         type=str,
         help="reaction name",
-        choices=["urea"]
+        choices=["urea", "amide", "ester", "sulfoamide", "thiourea"]
     )
     reaction_group.add_argument(
         "--rtype",

@@ -17,6 +17,7 @@ from db2_converter.mol2db2 import geometry  # for distance function
 from db2_converter.mol2db2 import unionfind2
 from db2_converter.mol2db2 import divisive_clustering
 from db2_converter.reaction.reaction import LINKHEAVYCOLOR, LINKHYDROCOLOR, REAOTHERCOLOR, CAPCOLOR, DEFAULTCOLOR
+FIRSTLASTCOLOR = 1
 
 #################################################################################################################
 #################################################################################################################
@@ -434,12 +435,17 @@ class Mol2(object):
     colored_atomNumber_color_tuple_list = []
     capped_C_atomNumber_list = []
     capped_C_bonded_atomNumber_list = []
+    if not chem_color_dict:
+      return
+    all_reactive_chem_colors = [ color for color in chem_color_dict.values() if color != CAPCOLOR ]
+    first_last_color_list = [ all_reactive_chem_colors[0], all_reactive_chem_colors[-1] ] # first and last
     # add default color to all atoms not defined in chem_color_dict
     # also, mark the capped C atomNumber
     for atomNumber in range(len(self.colorNum)): # or range(len(self.atomNum))
       if atomNumber in chem_color_dict: # in case some rigid bodies larger than defined
         atomColor = chem_color_dict[atomNumber]
         colored_atomNumber_color_tuple_list.append((atomNumber,atomColor))
+        # reagent heavy atoms + capped carbon atoms
       else:
         atomColor = DEFAULTCOLOR
       if atomColor == CAPCOLOR:
@@ -457,9 +463,9 @@ class Mol2(object):
     # add bonded color of the first atom
     colored_atomNumber_list = [ atomNumber for atomNumber, color in colored_atomNumber_color_tuple_list ]
     for atomNumber, color in colored_atomNumber_color_tuple_list:
-      if atomNumber in capped_C_bonded_atomNumber_list: # outward capped part
+      if atomNumber in capped_C_bonded_atomNumber_list: # exclude outward capped part
         continue
-      if color != 1: # we define the first or the end atoms of reaction group as 1
+      if color not in first_last_color_list: # first and last atom can be the linked atoms
         continue
       # inward part
       for neighNumber, bondType in self.atomBonds[atomNumber]:
