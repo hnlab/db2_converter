@@ -1,14 +1,23 @@
 def activate_ccdc():
     import logging
     import sys
+    import subprocess
     from db2_converter.config import config
     from db2_converter.utils.utils import run_external_command
     logger = logging.getLogger("db2_converter")
     try:
+        CCDC_PYTHON3 = config["ccdc"]["CCDC_PYTHON3"]
         CCDC_activate_node = config["ccdc"]["CCDC_activate_node"]
-        CCDC_activate_code = config["ccdc"]["CCDC_activate_code"]
         CCDC_activate_command = config["ccdc"]["CCDC_activate_command"]
-        run_external_command(f"ssh {CCDC_activate_node} {CCDC_activate_command} -a -k {CCDC_activate_code}")
+        CCDC_activate_code = config["ccdc"]["CCDC_activate_code"]
+        ccdc_activate_whole_command = f"{CCDC_activate_command} -a -k {CCDC_activate_code}"
+        ccdc_license_check_command = f"{CCDC_PYTHON3} -c 'import ccdc'"
+        if not CCDC_activate_node in [ "local", "localhost" ]:
+            ccdc_activate_whole_command = f"ssh {CCDC_activate_node} {ccdc_activate_whole_command}"
+            run_external_command(ccdc_activate_whole_command)
+        else:
+            if run_external_command(ccdc_license_check_command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE): # if no output, already activated
+                run_external_command(ccdc_activate_whole_command) # otherwise, should re-activate
     except Exception:
         logger.error("!!! CCDC is called but activation has failed...")
         sys.exit()

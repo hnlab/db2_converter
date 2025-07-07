@@ -122,8 +122,9 @@ def conf_sample(
         #     idx2 = match[-1] + 1# N
         #     fixed_torsion += f"C{idx1} N{idx2}"
         currpath = os.getcwd()
-        ccdc_command = f"ssh {node} \
-            {CCDC_PYTHON3} {ccdc_pyscript} \
+        # ccdc_command = f"ssh {node} \
+            # {CCDC_PYTHON3} {ccdc_pyscript} \
+        ccdc_command = f"{CCDC_PYTHON3} {ccdc_pyscript} \
             --infile {currpath}/conformer.TMP.sdf \
             --outfile {currpath}/conformer.{number}.sdf \
             --max_conf {max_conf} \
@@ -132,6 +133,8 @@ def conf_sample(
         # if fixed_torsion:
         #     ccdc_command += f" --lock_bond_list {fixed_torsion}"
         # Since we don't have an unlimited license, only one machine in a cluster can be activated simultaneously.
+        if not node in [ "local", "localhost" ]:
+            ccdc_command = f"ssh {node} " + ccdc_command
         run_external_command(ccdc_command)
         run_external_command(f"{UNICON_EXE} -i conformer.{number}.sdf -o {mol2file}", stderr=subprocess.DEVNULL)
 
