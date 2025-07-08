@@ -137,6 +137,8 @@ def raise_errlog(error,logger,name=""):
             ">>> No viable conformers after PoseBusters filter.",
         "5amsolfail":
             ">>> AMSOL calculation of desolvation/charge failed...",
+        "8norigid":
+            ">>> Expected rigid fragment cannot be identified...",
         "9nulldb2gz":
             ">>> Null db2gz! Null db2gz!! Null db2gz!!!"
     }

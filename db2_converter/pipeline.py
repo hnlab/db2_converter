@@ -300,30 +300,35 @@ def match_and_convert_mol2(
     # extra rigid fragment #
     if extra_fragsindex:
         extra_fragsindex = [extra_fragsindex]
+    logger.debug((f"extra_fragsmarts: {extra_fragsmarts}"))
     if extra_fragsmarts:
         extra_fragsindex = []
         for extra_fragindex in mol.GetSubstructMatches(
             Chem.MolFromSmarts(extra_fragsmarts)
         ):
             extra_fragsindex += [list(extra_fragindex)]
+    logger.debug((f"extra_fragsindex: {extra_fragsindex}"))
     if extra_fragsindex:  # extra_fragsmarts has higher priority than extra_fragsindex
         fragsindex += extra_fragsindex
-        if onlyextrafrags:
-            fragsindex = extra_fragsindex
+    if onlyextrafrags:
+        fragsindex = extra_fragsindex
+    logger.debug((f"fragsindex: {fragsindex}"))
     ########################
-    if not fragsindex:
+    if not onlyextrafrags and not fragsindex: # means a molecule with no identified rigid part
         fragsindex = [find_central_rigid(mol)]
         logger.info(f">>> No rigid part can be kept after bond cleavage.")
         logger.info(
             f">>>>>> Will use central atom and its 1st neighbors {fragsindex}..."
         )
-
+    if not fragsindex: # no rigid fragments can be found
+        return -1
     mol_withconfs = embed_blocks_molconformer(all_blocks, removeHs=False)
     # Aligning every frag
     i = 0
     for dirname in ["sdf", "mol2", "db2"]:
         Path(dirname).mkdir(exist_ok=True)
     old_chem_color_dict = chem_color_dict
+    logger.debug(f"old_chem_color_dict: {old_chem_color_dict}")
     for index in fragsindex:
         if not reaction and old_chem_color_dict:
             if onlyextrafrags and (extra_fragsindex or extra_fragsmarts):
@@ -630,16 +635,21 @@ def gen_conf(
         dock38=dock38,
         reaction=reaction
     )
-    # collect
-    if Path("db2").exists():
-        subprocess.run("cat db2/*.db2.gz > all.db2.gz", shell=True)
-    if os.path.getsize("all.db2.gz") != 28:
-        logger.info(f">>> {db2part_count} db2 blocks were generated and saved...")
-        logger.info(f"############### Finished with {zinc}... ###############\n")
-    else:
-        error = "9nulldb2gz"
+    if db2part_count < 0: # error, now means no expected rigid parts can be identified
+        error = "8norigid"
         faillist.append([smi, zinc, samplopt, error])
         raise_errlog(error, logger)
+    else:
+        # collect
+        if Path("db2").exists():
+            subprocess.run("cat db2/*.db2.gz > all.db2.gz", shell=True)
+        if os.path.getsize("all.db2.gz") != 28:
+            logger.info(f">>> {db2part_count} db2 blocks were generated and saved...")
+            logger.info(f"############### Finished with {zinc}... ###############\n")
+        else:
+            error = "9nulldb2gz"
+            faillist.append([smi, zinc, samplopt, error])
+            raise_errlog(error, logger)
 
     return (
         faillist,
