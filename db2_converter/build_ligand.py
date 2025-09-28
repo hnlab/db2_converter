@@ -191,15 +191,18 @@ def main():
             if line:
                 smi,name = line.split()
             count = 0
+            unique_smis = []
             for smi,react_idxs,chem_color_dict in reaction(smi,reactInfoObj):
-                onegenunit = GenUnit()
-                onegenunit.smi = smi
-                onegenunit.name = f"{name}.{count}"
-                onegenunit.react_idxs = react_idxs
-                onegenunit.chem_color_dict = chem_color_dict
-                genunits.append(onegenunit)
-                genlines.append(f"{onegenunit.smi} {onegenunit.name}")
-                count += 1
+                if smi not in unique_smis: # in case multiple possible substructMatches give the same result compound
+                    unique_smis.append(smi)
+                    onegenunit = GenUnit()
+                    onegenunit.smi = smi
+                    onegenunit.name = f"{name}.{count}"
+                    onegenunit.react_idxs = react_idxs
+                    onegenunit.chem_color_dict = chem_color_dict
+                    genunits.append(onegenunit)
+                    genlines.append(f"{onegenunit.smi} {onegenunit.name}")
+                    count += 1
             if count == 0:
                 error = "00reaction_fail"
                 faillist = [smi, name, args.samplopt, error]
