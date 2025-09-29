@@ -387,7 +387,7 @@ def rdk_enumerate_smi(insmi, tryEmbedding=False):
     m = Chem.MolFromSmiles(insmi)
     opts = StereoEnumerationOptions(tryEmbedding=tryEmbedding)
     isomers = tuple(EnumerateStereoisomers(m, options=opts))  # len(isomers) = 16
-    for smi in sorted(Chem.MolToSmiles(x, isomericSmiles=True) for x in isomers):
+    for smi in sorted(Chem.MolToSmiles(x, isomericSmiles=True, canonical=False) for x in isomers):
         outsmis.append(smi)
     return outsmis
 

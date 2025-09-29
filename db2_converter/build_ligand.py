@@ -109,36 +109,36 @@ def main():
     lines = [line for line in infile.read_text().split("\n") if line]
 
 
-    def oldrun(line,args): # To obtain information from generated files
-        max_conf = args.max_conf
-        lsp = line.split()
-        if len(lsp) > 2:
-            smi,name,max_conf = line.split()
-            max_conf = int(max_conf)
-        else:
-            smi,name = line.split()
-        gen_db2gzfile = args.outputpath / f"{name}.db2.gz"
-        gen_mol2file = args.outputpath / f"conformer.{name}.fixed.mol2"
-        if (exist_size(gen_db2gzfile) and exist_size(gen_mol2file)):
-            telapsed = "/"
-            ringmol = Chem.MolFromSmiles(smi)
-            N_ring = len(mol_to_ring_frags(ringmol, cutsmarts=sb_smarts))
-            NrotHs, multiplier = mol2db2.mol2db2_to_numhyds(
-                smifile="", mol2file=str(gen_mol2file), removemol2=False
-            )
-            if not args.keep_max_conf and N_ring:
-                if NrotHs in [4, 5]:
-                    max_conf = max_conf // 30
-                if NrotHs in [2, 3]:
-                    max_conf = max_conf // 3
-            N_max_conf_in = max_conf
-            N_act_conf = len(list(next_mol2_lines(gen_mol2file)))
-            N_act_conf_out_rotH = N_act_conf * multiplier
-            with gzip.open(gen_db2gzfile, "rt") as f:
-                N_db2_part = sum(1 for line in f if line.startswith("E"))
-            return [telapsed,N_max_conf_in,N_act_conf,N_act_conf_out_rotH,N_ring,N_db2_part,""]
-        else:
-            return ["/"]*6 + [[]]
+    # def oldrun(line,args): # To obtain information from generated files
+    #     max_conf = args.max_conf
+    #     lsp = line.split()
+    #     if len(lsp) > 2:
+    #         smi,name,max_conf = line.split()
+    #         max_conf = int(max_conf)
+    #     else:
+    #         smi,name = line.split()
+    #     gen_db2gzfile = args.outputpath / f"{name}.db2.gz"
+    #     gen_mol2file = args.outputpath / f"conformer.{name}.fixed.mol2"
+    #     if (exist_size(gen_db2gzfile) and exist_size(gen_mol2file)):
+    #         telapsed = "/"
+    #         ringmol = Chem.MolFromSmiles(smi)
+    #         N_ring = len(mol_to_ring_frags(ringmol, cutsmarts=sb_smarts))
+    #         NrotHs, multiplier = mol2db2.mol2db2_to_numhyds(
+    #             smifile="", mol2file=str(gen_mol2file), removemol2=False
+    #         )
+    #         if not args.keep_max_conf and N_ring:
+    #             if NrotHs in [4, 5]:
+    #                 max_conf = max_conf // 30
+    #             if NrotHs in [2, 3]:
+    #                 max_conf = max_conf // 3
+    #         N_max_conf_in = max_conf
+    #         N_act_conf = len(list(next_mol2_lines(gen_mol2file)))
+    #         N_act_conf_out_rotH = N_act_conf * multiplier
+    #         with gzip.open(gen_db2gzfile, "rt") as f:
+    #             N_db2_part = sum(1 for line in f if line.startswith("E"))
+    #         return [telapsed,N_max_conf_in,N_act_conf,N_act_conf_out_rotH,N_ring,N_db2_part,""]
+    #     else:
+    #         return ["/"]*6 + [[]]
 
 
     def newrun(line): # run db2_converter workflow
@@ -206,7 +206,7 @@ def main():
             if count == 0:
                 error = "00reaction_fail"
                 faillist = [smi, name, args.samplopt, error]
-                allfaillist.append(name)
+                allfaillist.append(faillist)
                 raise_errlog(error, logger, name=name)
         reaction_infile = f"{args.workingpath}/{infile.stem}.reaction.smi"
         lines = genlines

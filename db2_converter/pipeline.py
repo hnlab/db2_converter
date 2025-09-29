@@ -172,7 +172,7 @@ def fixmol2_wrapper(inmol2file, outmol2file, templatemol2file="", smiles="", sam
 
 def chemistrycheck(insmi, inmol2, outmol2, checkstereo=True):
     canonical_smiles = Chem.MolToSmiles(
-        Chem.MolFromSmiles(insmi), isomericSmiles=checkstereo
+        Chem.MolFromSmiles(insmi), isomericSmiles=checkstereo, canonical=True
     )
     all_blocks = [x for x in next_mol2_lines(inmol2)]
     all_mols = [Chem.MolFromMol2Block("".join(x), removeHs=True) for x in all_blocks]
@@ -186,9 +186,9 @@ def chemistrycheck(insmi, inmol2, outmol2, checkstereo=True):
             Use AssignStereochemistryFrom3D() if you want chiral flags only on actual stereocenters.
             """
             Chem.AssignStereochemistryFrom3D(mol)
-        smi = Chem.MolToSmiles(mol, isomericSmiles=checkstereo)
+        smi = Chem.MolToSmiles(mol, isomericSmiles=checkstereo, canonical=True)
         # if smi == canonical_smiles:
-        if Chem.MolToInchi(mol) == Chem.MolToInchi(Chem.MolFromSmiles(canonical_smiles)):
+        if Chem.MolToInchi(mol) == Chem.MolToInchi(Chem.MolFromSmiles(canonical_smiles)): # canonical numbering free
             correct_indexes.append(i)
         else:
             logger.warning(f"Not consistent:\ngen {smi}\nref {canonical_smiles}")
