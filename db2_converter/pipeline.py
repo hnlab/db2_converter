@@ -48,7 +48,7 @@ ANTECHAMBER = config["all"]["ANTECHAMBER"]
 # EPS = 0.05  # RMSD likelihood threshold
 EPS = 0.15
 EPS_modify = 1e-4  # lower kept, upper modified
-max_amsol_attempts = 10  # amsol attemp limit
+max_amsol_attempts = 5  # amsol attemp limit
 RMSthres = 0.5  # RMSD threshold
 sb_smarts = "[!$(*#*)&!D1]-&!@[!$(*#*)&!D1]"
 minfragsize = 3
@@ -134,7 +134,7 @@ def fixmol2_wrapper(inmol2file, outmol2file, templatemol2file="", smiles="", sam
 
 def chemistrycheck(insmi, inmol2, outmol2, checkstereo=True):
     canonical_smiles = Chem.MolToSmiles(
-        Chem.MolFromSmiles(insmi), isomericSmiles=checkstereo
+        Chem.MolFromSmiles(insmi), isomericSmiles=checkstereo, canonical=True
     )
     all_blocks = [x for x in next_mol2_lines(inmol2)]
     all_mols = [Chem.MolFromMol2Block("".join(x), removeHs=True) for x in all_blocks]
@@ -148,8 +148,9 @@ def chemistrycheck(insmi, inmol2, outmol2, checkstereo=True):
             Use AssignStereochemistryFrom3D() if you want chiral flags only on actual stereocenters.
             """
             Chem.AssignStereochemistryFrom3D(mol)
-        smi = Chem.MolToSmiles(mol, isomericSmiles=checkstereo)
-        if smi == canonical_smiles:
+        smi = Chem.MolToSmiles(mol, isomericSmiles=checkstereo, canonical=True)
+        # if smi == canonical_smiles:
+        if Chem.MolToInchi(mol) == Chem.MolToInchi(Chem.MolFromSmiles(canonical_smiles)): # canonical numbering free
             correct_indexes.append(i)
         else:
             logger.warning(f"Not consistent:\ngen {smi}\nref {canonical_smiles}")
@@ -249,22 +250,22 @@ def match_and_convert_mol2(
     if extra_fragsmarts:
         extra_fragsindex = []
         for extra_fragindex in mol.GetSubstructMatches(
-            Chem.MolFromSmiles(extra_fragsmarts)
+            Chem.MolFromSmarts(extra_fragsmarts)
         ):
             extra_fragsindex += [list(extra_fragindex)]
     if extra_fragsindex:  # extra_fragsmarts has higher priority than extra_fragsindex
         fragsindex += extra_fragsindex
-        if onlyextrafrags:
-            fragsindex = extra_fragsindex
+    if onlyextrafrags:
+        fragsindex = extra_fragsindex
     ########################
-    if not fragsindex:
+    if not onlyextrafrags and not fragsindex: # means a molecule with no identified rigid part
         fragsindex = [find_central_rigid(mol)]
         logger.info(f">>> No rigid part can be kept after bond cleavage.")
         logger.info(
             f">>>>>> Will use central atom and its 1st neighbors {fragsindex}..."
         )
-    logger.debug(f"fragsindex: {fragsindex}")
-
+    if not fragsindex: # no rigid fragments can be found
+        return -1
     mol_withconfs = embed_blocks_molconformer(all_blocks, removeHs=False)
     # Aligning every frag
     i = 0
@@ -293,16 +294,16 @@ def match_and_convert_mol2(
                 f"{UNICON_EXE} -i sdf/{prefix}.{i}.sdf -o  mol2/{prefix}.{i}.mol2",
                 stderr=subprocess.STDOUT,
             )
-            # # if output mol2 has format issue, put fixmol2_wrapper here
-            # fixmol2_wrapper(
-            #     f"mol2/{prefix}.{i}.mol2",
-            #     f"mol2/{prefix}.{i}.fixed.mol2",
-            #     templatemol2file=mol2file
-            # )
+            # if output mol2 has format issue, put fixmol2_wrapper here
+            fixmol2_wrapper(
+                f"mol2/{prefix}.{i}.mol2",
+                f"mol2/{prefix}.{i}.fixed.mol2",
+                templatemol2file=mol2file
+            )
             if not dock38:
                 ############## DOCK37 db2 from mol2 ##############
                 mol2db2.mol2db2_main(
-                    mol2file=f"mol2/{prefix}.{i}.mol2",
+                    mol2file=f"mol2/{prefix}.{i}.fixed.mol2",
                     solvfile=f"{prefix}.solv",
                     namefile="name.txt",
                     db2gzfile=f"db2/{prefix}.{i}.db2.gz",
@@ -312,7 +313,7 @@ def match_and_convert_mol2(
                 )
                 ##################################################
             else:
-                ############## DOCK37 db2 from mol2 ##############
+                ############## DOCK38 db2 from mol2 ##############
                 fixmol2_wrapper(
                     f"mol2/{prefix}.{i}.mol2",
                     f"mol2/{prefix}.{i}.fixed.mol2",
@@ -365,7 +366,7 @@ def gen_conf(
     if rotateh:
         NrotHs, multiplier = mol2db2.mol2db2_to_numhyds(f"{zinc}.smi")
     if not keep_max_conf:
-        if not N_ring:
+        if not N_ring and not (extra_fragsmarts or extra_fragsindex):
             max_conf = max_conf_noring
         if N_ring and rotateh:  # if rotateh, we need to truncate the ensemble size
             if NrotHs in [4, 5]:
@@ -374,6 +375,8 @@ def gen_conf(
                 max_conf = max_conf // 3
         if limitconf:
             max_conf = min(get_num_confs_for_mol(smi), max_conf)
+    elif limitconf:
+        max_conf = min(get_num_confs_for_mol(smi), max_conf)
     # if keep_max_conf, the max_conf you defined is the actual max_conf for generation
     N_max_conf_in = max_conf
 

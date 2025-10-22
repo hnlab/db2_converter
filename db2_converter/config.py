@@ -33,6 +33,7 @@ config = {
 }
 
 
+
 def check_config_avail(samplopt):
     header = ["level","name","value","available"]
     lines = []
@@ -66,8 +67,8 @@ def check_config_avail(samplopt):
 
 def check_UNICON_license():
     UNICON_EXE = config["all"]["UNICON_EXE"]
-    result = run_external_command(UNICON_EXE)
-    result_stdout_lines = result.stdout.split("\n")
+    outputstr = run_external_command(UNICON_EXE)
+    result_stdout_lines = outputstr.split("\n")
     license_line = [ line for line in result_stdout_lines if line.startswith("Your license is valid until:")][0]
     date_str = license_line.split("Your license is valid until:")[1].strip()
     if date_str:
@@ -80,4 +81,3 @@ def check_UNICON_license():
             logger.error("!!! UNICON license expired. !!!")
     else:
         logger.error("!!! UNICON license expired. !!!")
-

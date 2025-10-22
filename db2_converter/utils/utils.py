@@ -1,5 +1,6 @@
 import subprocess
 import os
+import signal
 from rdkit import Chem
 import logging
 logger = logging.getLogger("DB2 generation")
@@ -77,22 +78,26 @@ def update_mol2block_from_mol(mol2block, newmol):
 
 
 def run_external_command(command_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3600, log=logger): # no external command is expected to run more than 1 hour
+    proc = subprocess.Popen(
+        command_str,
+        stdout=stdout,
+        stderr=stderr,
+        shell=True,
+        universal_newlines=True,
+        start_new_session=True
+    )
     try:
-        result = subprocess.run(
-            command_str,
-            stdout=stdout,
-            stderr=stderr,
-            timeout=timeout,
-            shell=True,
-            universal_newlines=True,
-        )
-        if result.stdout:
-            log.debug(result.stdout)
-        if result.stderr:
-            log.error(result.stderr)
-        return result
-    except subprocess.TimeoutExpired as e:
+        proc.wait(timeout)
+        if proc.stdout:
+            outputstr = proc.stdout.read()
+            log.debug(outputstr)
+            return outputstr
+        if proc.stderr:
+            log.error(proc.stderr.read())
+    except subprocess.TimeoutExpired:
         log.error(f"Command {command_str} timeout out after {timeout} seconds.")
+        # proc.kill() # kill only the parent process, not the child
+        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
 
 
 def exist_size(testfile):
@@ -115,6 +120,7 @@ def check_type(name, type):
         return type(name)
     except:
         return
+
 
 def raise_errlog(error,logger):
     error_dict = {

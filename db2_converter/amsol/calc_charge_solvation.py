@@ -12,7 +12,7 @@ logger = logging.getLogger("amsol")
 
 
 def calc_charge_solvation(
-    mol2file, amsoltimelimit=60, logger=logger
+    mol2file, amsoltimelimit=30, logger=logger
 ):  # default 1min for each amsol calculation
     AMSOLEXE = config["all"]["AMSOLEXE"]
     OBABELEXE = config["all"]["BABEL_EXE"]
@@ -62,10 +62,14 @@ def calc_charge_solvation(
     run_external_command(
         f"{AMSOLEXE} < temp.in-wat > temp.o-wat", timeout=amsoltimelimit
     )
+    if not exist_size("temp.o-wat"):
+        return
     logger.debug("Running AMSOL7.1: SM5.42R (in hexadecane solvent)")
     run_external_command(
         f"{AMSOLEXE} < temp.in-hex > temp.o-hex", timeout=amsoltimelimit
     )
+    if not exist_size("temp.o-hex"):
+        return
 
     # Extract data from AMSOL7.1 output files
     logger.debug("Extracting data from AMSOL7.1 water and hexadecane output files:")
