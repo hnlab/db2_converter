@@ -13,7 +13,7 @@ BONDTYPE = "{:>6d}{:>6d}{:>6d} {:<4s}\n"
 
 
 def next_mol2_lines(infile):
-    """Method to return one mol2 block once."""
+    """Method to yield one mol2 block once."""
     lines = list()
     for line in open(infile):
         if "@<TRIPOS>MOLECULE" in line:
@@ -41,18 +41,18 @@ def derive_first_mol2(inmol2, outmol2):
                 ofp.write(line)
 
 
-def update_mol2block_from_mol(mol2block, newmol):
-    p1 = mol2block.index("@<TRIPOS>ATOM\n")
-    p2 = mol2block.index("@<TRIPOS>BOND\n")
-    Natom, Nbond = mol2block[2].strip().split()[0:2]
+def update_mol2block_from_mol(mol2lines, newmol):
+    p1 = mol2lines.index("@<TRIPOS>ATOM\n")
+    p2 = mol2lines.index("@<TRIPOS>BOND\n")
+    Natom, Nbond = mol2lines[2].strip().split()[0:2]
 
-    startpart = mol2block[:p1]
+    startpart = mol2lines[:p1]
     atompart = ["@<TRIPOS>ATOM\n"]
     bondpart = ["@<TRIPOS>BOND\n"]
     new_pos = newmol.GetConformer().GetPositions()
 
     for cout, i in enumerate(range(p1 + 1, p1 + 1 + int(Natom))):
-        items = mol2block[i].strip().split()
+        items = mol2lines[i].strip().split()
         x, y, z = new_pos[cout]
         atompart.append(
             ATOMTYPE.format(
@@ -69,7 +69,7 @@ def update_mol2block_from_mol(mol2block, newmol):
         )
 
     for i in range(p2 + 1, p2 + 1 + int(Nbond)):
-        items = mol2block[i].strip().split()
+        items = mol2lines[i].strip().split()
         bondpart.append(
             BONDTYPE.format(int(items[0]), int(items[1]), int(items[2]), items[3])
         )

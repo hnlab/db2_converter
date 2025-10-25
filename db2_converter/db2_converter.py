@@ -48,8 +48,9 @@ def db2_converter(
                 f"{zinc}/conformer.{zinc}.fixed.mol2",
                 f"{outputpath}/conformer.{zinc}.fixed.mol2",
             )
-    if not debug:
-        subprocess.run(f"rm -r {zinc} {zinc}.smi", shell=True)
+    # clean at last
+    # if not debug:
+        # subprocess.run(f"rm -r {zinc} {zinc}.smi", shell=True)
 
     return result_gen_conf
 

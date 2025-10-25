@@ -8,6 +8,7 @@ from functools import partial
 import time
 from tabulate import tabulate
 import gzip
+import subprocess
 
 # disable rdkit warning log
 from rdkit import Chem
@@ -185,7 +186,6 @@ def main():
             logger.info(">>> Continue last run...\n")
 
     allsum = []
-    runleft = True if args.rerun else False
     for line in lines:
         lsp = line.split()
         smi = lsp[0]
@@ -234,6 +234,11 @@ def main():
         with open(f"{args.outputpath}/{infile.name}.{args.samplopt}.faillist", "w") as f:
             f.write("\n".join(writefaillist))
             f.write("\n")
+
+    # clean
+    dirnames = [ line.split()[1] for line in lines ]
+    smifiles = [ name + ".smi" for name in dirnames]
+    subprocess.run(f"rm -r {' '.join(dirnames)} {' '.join(smifiles)}", shell=True)
 
 
 if __name__ == "__main__":

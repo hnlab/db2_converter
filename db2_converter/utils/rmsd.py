@@ -120,17 +120,19 @@ def orginXYZ(mol):
     return mol_pos
 
 
-def RMSDfilter(zinc, samplopts, RMSthres):
+def RMSDfilter(mol2lines_List_dict, zinc, samplopts, RMSthres):
     for k, samplopt in enumerate(samplopts):
         try:
-            ref_mol2_blocks, ref_mol2_mols = MolsFromMol2File(
-                f"conformer.{zinc}.{samplopts[k]}.fixed.mol2", removeHs=False
-            )
-            if ref_mol2_blocks:
+            ref_mol2_lines_List = mol2lines_List_dict[samplopt]
+            ref_mol2_mols = [
+                    Chem.MolFromMol2Block("".join(mol2lines), removeHs=False)
+                    for mol2lines in ref_mol2_lines_List
+                ]
+            if ref_mol2_mols:
                 break
         except:
             continue
-    out_mol2_mols, out_mol2_blocks = [], []
+    out_mol2_mols, out_mol2_lines_List = [], []
     for i, moli in enumerate(ref_mol2_mols):
         try:
             min_rmsd = 1e6
@@ -141,19 +143,21 @@ def RMSDfilter(zinc, samplopts, RMSthres):
                 )
             if min_rmsd > RMSthres:
                 out_mol2_mols.append(moli)
-                out_mol2_blocks.append(ref_mol2_blocks[i])
+                out_mol2_lines_List.append(ref_mol2_lines_List[i])
         except:
             continue
-    out_mol2_blocks.append(ref_mol2_blocks[-1])
+    out_mol2_lines_List.append(ref_mol2_lines_List[-1])
     if len(samplopts) == 1:
-        return out_mol2_blocks
+        return out_mol2_lines_List
     else:
         ref_mol2_mols = out_mol2_mols
         for samplopt in samplopts[k+1:]:
             try:
-                probe_mol2_blocks, probe_mol2_mols = MolsFromMol2File(
-                    f"conformer.{zinc}.{samplopt}.fixed.mol2", removeHs=False
-                )
+                probe_mol2_lines_List = mol2lines_List_dict[samplopt]
+                probe_mol2_mols = [
+                        Chem.MolFromMol2Block("".join(mol2lines), removeHs=False)
+                        for mol2lines in ref_mol2_lines_List
+                    ]
                 if not probe_mol2_mols:
                     continue
                 for i, probe_mol in enumerate(probe_mol2_mols):
@@ -165,8 +169,8 @@ def RMSDfilter(zinc, samplopts, RMSthres):
                         )
                     if min_rmsd >= RMSthres:
                         out_mol2_mols.append(probe_mol)
-                        out_mol2_blocks.append(probe_mol2_blocks[i])
+                        out_mol2_lines_List.append(probe_mol2_lines_List[i])
                 ref_mol2_mols = out_mol2_mols
             except:
                 continue
-    return out_mol2_blocks
+    return out_mol2_lines_List

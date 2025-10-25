@@ -104,41 +104,47 @@ def write_enumerated_smifile(inlines, outfile, method):
         return faillist
 
 
-def fixmol2_wrapper(inmol2file, outmol2file, templatemol2file="", smiles="", samplopt=""):
+def fixmol2_wrapper(in_mol2lines_List, templateMol2lines="", smiles="", samplopt=""):
     tmp0mol2 = "tmp0.mol2"
     tmp0fixmol2 = "tmp0.mol2.fixed.mol2"
     TMPmol2 = "conformer.TMP.fixed.mol2"
-    for i, mol2content in enumerate(next_mol2_lines(inmol2file)):
-        with open(f"tmp{i}.mol2", "w") as f:
-            f.write("".join(mol2content))
+    Path(tmp0mol2).write_text("".join(in_mol2lines_List[0]))
+    # tentatively keeping antechamber converter
     run_external_command(
         f"{ANTECHAMBER} -i {tmp0mol2} -fi mol2 -o {tmp0fixmol2} -fo mol2 -at sybyl -pf y"
     )
-    if not templatemol2file:
+    if not templateMol2lines:
         if not smiles:
             assert smiles != "", "SMILES is not given to fixmol2"
         if not exist_size(tmp0fixmol2) or not check_mol2_smi(tmp0fixmol2, smiles):
             # antechamber cannot deal with "[N-]" due to unexpected valence.
             shutil.copy(tmp0mol2, tmp0fixmol2)
-        fixmol2_and_du(smiles, tmp0fixmol2)
-        templatemol2file = tmp0fixmol2
+        tmp0fix_mol2lines = open(tmp0fixmol2).readlines()
+        tmp0fix_mol2lines_fix = fixmol2_and_du(smiles, tmp0fix_mol2lines)
+        templateMol2lines = tmp0fix_mol2lines_fix
     if samplopt == "rdkit":
-        shutil.move(tmp0fixmol2, TMPmol2)
+        # shutil.move(tmp0fixmol2, TMPmol2)
+        Path(TMPmol2).write_text("".join(templateMol2lines))
     else:
-        for tmpmol2 in sorted(Path(".").glob("tmp*.mol2")):
-            fixmol2_by_template(tmpmol2, templatemol2file)
-        subprocess.run(f"rm {tmp0fixmol2}", shell=True)
-        subprocess.run(f"cat tmp*.mol2 > {outmol2file}", shell=True)
-        subprocess.run("rm tmp*", shell=True)
+        out_mol2lines_List = [
+            fixmol2_by_template(mol2lines, templateMol2lines)
+            for mol2lines in in_mol2lines_List
+            ]
+        return out_mol2lines_List
 
 
-def chemistrycheck(insmi, inmol2, outmol2, checkstereo=True):
+def chemistrycheck(insmi, in_mol2lines_List, checkstereo=True):
+    from rdkit import RDLogger
+    RDLogger.DisableLog("rdApp.*") # disable RDLogger of MolToInchi
+
     canonical_smiles = Chem.MolToSmiles(
         Chem.MolFromSmiles(insmi), isomericSmiles=checkstereo, canonical=True
     )
-    all_blocks = [x for x in next_mol2_lines(inmol2)]
-    all_mols = [Chem.MolFromMol2Block("".join(x), removeHs=True) for x in all_blocks]
-    correct_indexes = []
+    all_mols = [
+            Chem.MolFromMol2Block("".join(mol2lines), removeHs=True)
+            for mol2lines in in_mol2lines_List
+            ]
+    out_mol2lines_List = []
     for i, mol in enumerate(all_mols):
         if checkstereo:
             # Chem.AssignAtomChiralTagsFromStructure(mol)
@@ -148,25 +154,27 @@ def chemistrycheck(insmi, inmol2, outmol2, checkstereo=True):
             Use AssignStereochemistryFrom3D() if you want chiral flags only on actual stereocenters.
             """
             Chem.AssignStereochemistryFrom3D(mol)
-        smi = Chem.MolToSmiles(mol, isomericSmiles=checkstereo, canonical=True)
-        # if smi == canonical_smiles:
-        if Chem.MolToInchi(mol) == Chem.MolToInchi(Chem.MolFromSmiles(canonical_smiles)): # canonical numbering free
-            correct_indexes.append(i)
+        ref_inchi = Chem.MolToInchi(Chem.MolFromSmiles(canonical_smiles))
+        gen_inchi = Chem.MolToInchi(mol)
+        if gen_inchi == ref_inchi:
+            out_mol2lines_List.append(in_mol2lines_List[i])
         else:
-            logger.warning(f"Not consistent:\ngen {smi}\nref {canonical_smiles}")
-    logger.info(f">>> {len(correct_indexes)} / {len(all_mols)} passed chemistrycheck.")
-    with open(outmol2, "w") as f:
-        for i in correct_indexes:
-            f.write("".join(all_blocks[i]))
+            logger.warning(f"Not consistent:\ngen {gen_inchi}\nref {ref_inchi}")
+    logger.info(f">>> {len(out_mol2lines_List)} / {len(in_mol2lines_List)} passed chemistrycheck.")
+    return out_mol2lines_List
 
 
-def PB_filter(inmol2, outmol2):
-    all_blocks = [x for x in next_mol2_lines(inmol2)]
+def PB_filter(name, in_mol2lines_List):
+    out_mol2lines_List = []
+    PBmol2file = f"conformer.{name}.fixed.pb.mol2"
+    with open(PBmol2file, "w") as f:
+        for mol2lines in in_mol2lines_List:
+            f.write("".join(mol2lines))
     run_external_command(
-        f"{UNICON_EXE} -i {inmol2} -o {inmol2}.unipb.sdf",
+        f"{UNICON_EXE} -i {PBmol2file} -o {PBmol2file}.unipb.sdf",
     )
     buster = PoseBusters(config="mol")
-    df = buster.bust([f"{inmol2}.unipb.sdf"], full_report=True)
+    df = buster.bust([f"{PBmol2file}.unipb.sdf"], full_report=True)
     # df = buster.bust([f"{inmol2}"], full_report=True)
     df["PBvalid_conf"] = (
         df["all_atoms_connected"]
@@ -180,24 +188,20 @@ def PB_filter(inmol2, outmol2):
     )
     df = df.reset_index(drop=False)
     correct_indexes = df.index[df["PBvalid_conf"]].tolist()
+    out_mol2lines_List = [in_mol2lines_List[i] for i in correct_indexes]
     logger.info(
-        f">>> {len(correct_indexes)} / {len(all_blocks)} passed PoseBusters filter."
+        f">>> {len(out_mol2lines_List)} / {len(in_mol2lines_List)} passed PoseBusters filter."
     )
-    with open(outmol2, "w") as f:
-        for i in correct_indexes:
-            f.write("".join(all_blocks[i]))
+    return out_mol2lines_List
 
 
-def mmffopt(inmol2, outmol2):
-    mol2blocks = [i for i in next_mol2_lines(inmol2) if i]
-    newmol2content = []
-    for mol2block in mol2blocks:
-        newmol = Chem.MolFromMol2Block("".join(mol2block), removeHs=False)
+def mmffopt(in_mol2lines_List):
+    out_mol2lines_List = []
+    for mol2lines in in_mol2lines_List:
+        newmol = Chem.MolFromMol2Block("".join(mol2lines), removeHs=False)
         MMFFOptimizeMolecule(newmol)
-        newmol2block = update_mol2block_from_mol(mol2block, newmol)
-        newmol2content.append("".join(newmol2block))
-    with open(outmol2, "w") as f:
-        f.write("".join(newmol2content))
+        out_mol2lines_List.append(update_mol2block_from_mol(mol2lines, newmol))
+    return out_mol2lines_List
 
 
 def prepare_mol2(name, smiles, inmol2, mergeiso=True):
@@ -225,8 +229,9 @@ def match_and_convert_mol2(
     prefix="output",
     dock38=False,
 ):
-    all_blocks = [x for x in next_mol2_lines(mol2file)]
-    mol = Chem.MolFromMol2Block("".join(all_blocks[0]), removeHs=False)
+    all_mol2lines = [x for x in next_mol2_lines(mol2file)]
+    templateMol2lines = all_mol2lines[0]
+    mol = Chem.MolFromMol2Block("".join(templateMol2lines), removeHs=False)
     # Get atom name to serial number mapping
     index_of_name = dict()
     for atom in mol.GetAtoms():
@@ -266,7 +271,7 @@ def match_and_convert_mol2(
         )
     if not fragsindex: # no rigid fragments can be found
         return -1
-    mol_withconfs = embed_blocks_molconformer(all_blocks, removeHs=False)
+    mol_withconfs = embed_blocks_molconformer(all_mol2lines, removeHs=False)
     # Aligning every frag
     i = 0
     for dirname in ["sdf", "mol2", "db2"]:
@@ -295,11 +300,11 @@ def match_and_convert_mol2(
                 stderr=subprocess.STDOUT,
             )
             # if output mol2 has format issue, put fixmol2_wrapper here
-            fixmol2_wrapper(
-                f"mol2/{prefix}.{i}.mol2",
-                f"mol2/{prefix}.{i}.fixed.mol2",
-                templatemol2file=mol2file
-            )
+            in_mol2lines_List = list(next_mol2_lines(f"mol2/{prefix}.{i}.mol2"))
+            out_mol2lines_List = fixmol2_wrapper(in_mol2lines_List, templateMol2lines)
+            with open(f"mol2/{prefix}.{i}.fixed.mol2", "w") as f:
+                for mol2lines in out_mol2lines_List:
+                    f.write("".join(mol2lines))
             if not dock38:
                 ############## DOCK37 db2 from mol2 ##############
                 mol2db2.mol2db2_main(
@@ -314,11 +319,6 @@ def match_and_convert_mol2(
                 ##################################################
             else:
                 ############## DOCK38 db2 from mol2 ##############
-                fixmol2_wrapper(
-                    f"mol2/{prefix}.{i}.mol2",
-                    f"mol2/{prefix}.{i}.fixed.mol2",
-                    templatemol2file=mol2file
-                )
                 db2in_standard = mol2_strain(f"mol2/{prefix}.{i}.fixed.mol2")
                 mol2db2_38.mol2db2_main(
                     db2in_standard,
@@ -385,6 +385,7 @@ def gen_conf(
     if len(samplopts) > 1:
         logger.info(f"#### {samplname} ensemble sampling... ####")
 
+    mol2lines_List_dict = {}
     for samplopt in samplopts:
         mol2file = f"conformer.{zinc}.{samplopt}.mol2"
         fixed_mol2file = f"conformer.{zinc}.{samplopt}.fixed.mol2"
@@ -409,32 +410,39 @@ def gen_conf(
             error = "1generate"
             faillist.append([smi, zinc, samplopt, error])
             raise_errlog(error, logger)
+            mol2lines_List_dict[samplopt] = []
             continue
 
         try:
-            fixmol2_wrapper(mol2file, fixed_mol2file, "", smi, samplopt)
+            in_mol2lines_List = list(next_mol2_lines(mol2file))
+            out_mol2lines_List = fixmol2_wrapper(in_mol2lines_List, "", smi, samplopt)
         except Exception as e:
             logger.error(e)
             error = "2fixmol2"
             faillist.append([smi, zinc, samplopt, error])
             raise_errlog(error, logger)
+            mol2lines_List_dict[samplopt] = []
             continue
 
         if samplopt == "rdkit":
             try:
                 conf_sample(samplopt, zinc, fixed_mol2file, max_conf, log=logger)
+                out_mol2lines_List = list(next_mol2_lines(fixed_mol2file))
             except Exception as e:
                 logger.error(e)
                 error = "1generate"
                 faillist.append([smi, zinc, samplopt, error])
                 raise_errlog(error, logger)
+                mol2lines_List_dict[samplopt] = []
                 continue
 
-        if not exist_size(fixed_mol2file):
+        if not out_mol2lines_List:
             error = "2fixmol2"
             faillist.append([smi, zinc, samplopt, error])
             raise_errlog(error, logger)
+            mol2lines_List_dict[samplopt] = []
             continue
+        in_mol2lines_List = out_mol2lines_List
 
         ## Chemistry check and filter (Through RDKit)
         if checkstereo:
@@ -442,50 +450,46 @@ def gen_conf(
         else:
             logger.info(">>> Chemistry checking without stereochemistry... Be careful!!!")
         try:
-            chemistrycheck(
+            out_mol2lines_List = chemistrycheck(
                 insmi=smi,
-                inmol2=fixed_mol2file,
-                outmol2=f"conformer.{zinc}.fixed.filter.mol2",
+                in_mol2lines_List=in_mol2lines_List,
                 checkstereo=checkstereo,
             )
-            shutil.move(f"conformer.{zinc}.fixed.filter.mol2", f"{fixed_mol2file}")
         except Exception as e:
-            with open(fixed_mol2file, "w") as f:
-                pass  # check failed, so we do not want to keep
-        if os.path.getsize(fixed_mol2file) == 0:
+            out_mol2lines_List = []
+        if not out_mol2lines_List:
             error = "3chemistrycheck"
             faillist.append([smi, zinc, samplopt, error])
             raise_errlog(error, logger)
+            mol2lines_List_dict[samplopt] = []
             continue
         else:
             logger.info(">>> Chemistry Checked.")
+        in_mol2lines_List = out_mol2lines_List
 
         ## PoseBusters filter
         if PBfilter:
             logger.info(">>> PoseBusters filter implausible conformers...")
-            PB_filter(inmol2=fixed_mol2file, outmol2=f"conformer.{zinc}.fixed.pb.mol2")
-            shutil.move(f"conformer.{zinc}.fixed.pb.mol2", f"{fixed_mol2file}")
+            out_mol2lines_List = PB_filter(name=zinc, in_mol2lines_List=in_mol2lines_List)
             logger.info(">>> PoseBusters filter Finished.")
-        if os.path.getsize(fixed_mol2file) == 0:
+        if not out_mol2lines_List:
             error = "4PBfilter"
             faillist.append([smi, zinc, samplopt, error])
             raise_errlog(error, logger)
+            mol2lines_List_dict[samplopt] = []
             continue
+        in_mol2lines_List = out_mol2lines_List
 
         ## MMFF optimization
         if MMFFopt:
             logger.info(">>> MMFF optimization...")
-            mmffopt(
-                inmol2=fixed_mol2file, outmol2=f"conformer.{zinc}.fixed.mmffopt.mol2"
-            )
-            shutil.move(f"conformer.{zinc}.fixed.mmffopt.mol2", f"{fixed_mol2file}")
+            out_mol2lines_List = mmffopt(in_mol2lines_List)
             logger.info(">>> MMFF optimization Finished.")
 
         ## Iterate to get one normal amsol output
         logger.info(">>> AMSOL calculation for atom partial charges and desolvation...")
         if not exist_size(f"{prefix}.solv"):  # keep for ensemble
-            mol2lines_list = list(next_mol2_lines(fixed_mol2file))
-            for i, mol2lines in enumerate(mol2lines_list):
+            for i, mol2lines in enumerate(out_mol2lines_List):
                 logger.debug(f"amsol trial {i}")
                 with open(f"{prefix}{zinc}.mol2", "w") as f:
                     f.write("".join(mol2lines))
@@ -519,29 +523,27 @@ def gen_conf(
         faillist.append([])
         # If success, faillist will be [], this could be helpful for combinatorial generation
 
+        mol2lines_List_dict[samplopt] = out_mol2lines_List
+
     # collect mol2, rmsd filter
+    in_mol2lines_List = []
     fixed_mol2file = f"conformer.{zinc}.fixed.mol2"
     fail_name_count = len([onefail for onefail in faillist if onefail])
     if fail_name_count == len(samplopts):
         return faillist, N_max_conf_in, "", "", N_ring, ""
     else:
-        origin_mol2_blocks = []
         for samplopt in samplopts:
-            if exist_size(f"conformer.{zinc}.{samplopt}.fixed.mol2"):
-                mol2_blocks = list(
-                    next_mol2_lines(f"conformer.{zinc}.{samplopt}.fixed.mol2")
-                )
-                origin_mol2_blocks += mol2_blocks
+            in_mol2lines_List += mol2lines_List_dict[samplopt]
         if not cluster:
-            out_mol2_blocks = origin_mol2_blocks
+            out_mol2lines_List = in_mol2lines_List
         else:
             logger.info(f">>> RMSD-based Clustering at {RMSthres} Angstrom...")
-            out_mol2_blocks = RMSDfilter(zinc, samplopts, RMSthres)
-            logger.info(f">>> {len(out_mol2_blocks)} / {len(origin_mol2_blocks)} kept.")
+            out_mol2lines_List = RMSDfilter(mol2lines_List_dict, zinc, samplopts, RMSthres)
+            logger.info(f">>> {len(out_mol2lines_List)} / {len(in_mol2lines_List)} kept.")
             logger.info(">>> RMSD Clustering finished...")
         with open(fixed_mol2file, "w") as f:
-            f.write("".join(["".join(mol2_block) for mol2_block in out_mol2_blocks]))
-    N_act_conf = len(out_mol2_blocks)
+            f.write("".join(["".join(mol2_block) for mol2_block in out_mol2lines_List]))
+    N_act_conf = len(out_mol2lines_List)
     if rotateh:
         N_act_conf_out_rotH = N_act_conf * multiplier
     else:
