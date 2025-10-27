@@ -235,11 +235,6 @@ def main():
             f.write("\n".join(writefaillist))
             f.write("\n")
 
-    # clean
-    dirnames = [ line.split()[1] for line in lines ]
-    smifiles = [ name + ".smi" for name in dirnames]
-    subprocess.run(f"rm -r {' '.join(dirnames)} {' '.join(smifiles)}", shell=True)
-
 
 if __name__ == "__main__":
     main()
