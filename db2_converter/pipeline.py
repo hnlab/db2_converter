@@ -154,8 +154,12 @@ def chemistrycheck(insmi, in_mol2lines_List, checkstereo=True):
             Use AssignStereochemistryFrom3D() if you want chiral flags only on actual stereocenters.
             """
             Chem.AssignStereochemistryFrom3D(mol)
-        ref_inchi = Chem.MolToInchi(Chem.MolFromSmiles(canonical_smiles))
-        gen_inchi = Chem.MolToInchi(mol)
+            ref_inchi = Chem.MolToInchi(Chem.MolFromSmiles(canonical_smiles))
+            gen_inchi = Chem.MolToInchi(mol)
+        else:
+            # https://stackoverflow.com/questions/74559421/warning-inchi-with-rdkit
+            ref_inchi = Chem.MolToInchi(Chem.MolFromSmiles(canonical_smiles), options="-SNon")
+            gen_inchi = Chem.MolToInchi(mol, options="-SNon")
         if gen_inchi == ref_inchi:
             out_mol2lines_List.append(in_mol2lines_List[i])
         else:

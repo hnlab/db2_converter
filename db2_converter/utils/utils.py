@@ -77,14 +77,15 @@ def update_mol2block_from_mol(mol2lines, newmol):
     return startpart + atompart + bondpart + ["\n"]
 
 
-def run_external_command(command_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3600, log=logger): # no external command is expected to run more than 1 hour
+def run_external_command(command_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3600, log=logger, env=None): # no external command is expected to run more than 1 hour
     proc = subprocess.Popen(
         command_str,
         stdout=stdout,
         stderr=stderr,
         shell=True,
         universal_newlines=True,
-        start_new_session=True
+        start_new_session=True,
+        env=env
     )
     try:
         proc.wait(timeout)
