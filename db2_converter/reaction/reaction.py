@@ -126,6 +126,7 @@ def reaction(reagent1_smi,reactInfoObj):
         logger.debug(f"prodct_smi: {prodct_smi}")
         mol = Chem.MolFromSmiles(prodct_smi) # kekulize it
         if not mol:
+            # print("reaction: reaction failed")
             continue
         react_idxs = list(range(reactInfoObj.ncore)) # react idxs, e.g., 0,1,2,3
         cap_idxs = list(range(reactInfoObj.ncore, ncore_plus_ncap)) # capped methyl C e.g., 4
@@ -141,8 +142,10 @@ def reaction(reagent1_smi,reactInfoObj):
         mol = neutralize_atoms(mol,neutralizeAtomIds)
         # neutralize
         if not mol:
+            # print("reaction: neutralize failed")
             continue # neutralize failed.
         if not mol.GetSubstructMatches(Chem.MolFromSmarts(reactInfoObj.productSMARTS)): # check if generate the expected product
+            # print("reaction: unexpected reaction")
             continue
         # check
         for filterSMARTS in reactInfoObj.filterSMARTS_list:

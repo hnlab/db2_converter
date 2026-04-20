@@ -74,11 +74,14 @@ Note: In a reaction SMARTS, the position of the capped carbon (cap C) in the pro
       <reaction reagenttype="amine" cap="0" reagent2smi="N=C=O" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[NX2:1]=[CX2:2]=[OX1:3]>>[NX3,NX4:4][CX3:2](=[OX1:3])[NX3:1]" />
       <reaction reagenttype="amine" cap="1" reagent2smi="CN=C=O" reactionSMARTS="[NX3,NX4;+0,+1;H1,H2,H3:4].[CX4:5][NX2:1]=[CX2:2]=[OX1:3]>>[NX3,NX4:4][CX3:2](=[OX1:3])[NX3:1][CX4:5]" />
     </reactionList>
-    <forwardReaction reactionSMARTS="[NX2:1]=[CX2:2]=[OX1:3].[NX3;+0,+1;H1,H2,H3:4]>>[NX3:1][CX3:2](=[OX1:3])[NX3:4]" />
+    <!-- <forwardReaction reactionSMARTS="[NX2:1]=[CX2:2]=[OX1:3].[NX3;+0,+1;H1,H2,H3:4]>>[NX3:1][CX3:2](=[OX1:3])[NX3:4]" /> -->
+    <forwardReaction reactionSMARTS="[NX2:1]=[CX2:2]=[OX1:3].[NX3,NX4;+0,+1;H1,H2,H3,H4:4]>>[NX3:1][CX3:2](=[OX1:3])[NX3,NX4:4]" />
     <reverseReaction reactionSMARTS="[NX3:1][CX3:2](=[OX1:3])[NX3:4]>>[NX2:1]=[CX2:2]=[OX1:3].[NX3:4]" />
     <protectList>
-      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(N~[N,O,S])]" />
-      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(NC~[N,O,S])]" />
+      <!-- <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(N~[N,O,S])]" /> -->
+      <!-- <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(NC~[N,O,S])]" /> -->
+      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(N~[O,S])]" />
+      <protect reagenttype="amine" protectidx="0" protectSMARTS="[N;$(NC~[O,S])]" />
     </protectList>
     <filterList>
       <filter filterSMARTS="[C]-[Cl,Br,I]" />
