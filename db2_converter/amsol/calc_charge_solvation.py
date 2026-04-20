@@ -12,7 +12,7 @@ logger = logging.getLogger("amsol")
 
 
 def calc_charge_solvation(
-    mol2file, amsoltimelimit=30, logger=logger
+    mol2file, outprefix="output", amsoltimelimit=30, logger=logger
 ):  # default 1min for each amsol calculation
     AMSOLEXE = config["all"]["AMSOLEXE"]
     OBABELEXE = config["all"]["BABEL_EXE"]
@@ -77,7 +77,7 @@ def calc_charge_solvation(
         filenamewat=f"{current_path}/temp.o-wat",
         filenamehex=f"{current_path}/temp.o-hex",
         mol2file=temp_file,
-        outputprefix=f"{current_path}/output",
+        outputprefix=f"{current_path}/{outprefix}",
     )
 
     # Clean
