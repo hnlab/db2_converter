@@ -2,13 +2,15 @@ import os
 import itertools
 import shutil
 import subprocess
+from pathlib import Path
 from rdkit import Chem
+from rdkit.Chem.rdMolTransforms import GetDihedralDeg, SetDihedralDeg
 from rdkit.Chem.Lipinski import NumRotatableBonds, NumAliphaticRings
 import logging
 
 logger = logging.getLogger("db2_converter")
 
-from db2_converter.utils.utils import run_external_command
+from db2_converter.utils.utils import run_external_command, exist_size
 from db2_converter.utils.rdkit_gen import smifile_to_sdffile, rdkit_gen
 from db2_converter.config import config
 
@@ -71,16 +73,75 @@ def conf_sample(
     max_conf,
     bcl_option="",
     confgenx_option="",
+    reaction=False,
+    chem_color_dict={},
     RMSDThresh=0.5,
     log=logging,
 ):
+    def reaction_sample(molfile):
+        if Path(molfile).suffix == ".sdf":
+            mols = list(Chem.SDMolSupplier(molfile, removeHs=False))
+        rot_bond_idxs = []
+        mol0 = mols[0]
+        ri = mol0.GetRingInfo()
+        # identify the rotatable bond
+        for atomJd in chem_color_dict:
+            if chem_color_dict[atomJd] in range(1,21): # reagent color
+                for atomId in chem_color_dict:
+                    if mol0.GetBondBetweenAtoms(atomId, atomJd): # reaction group side
+                        break
+                atomJ = mol0.GetAtomWithIdx(atomJd)
+                for atomK in atomJ.GetNeighbors(): # linking side
+                    atomKd = atomK.GetIdx()
+                    if ri.AreAtomsInSameRing(atomJd, atomKd): # rotatable bond on the ring, hard to rotate independently
+                        continue
+                    if atomKd not in chem_color_dict and atomK.GetSymbol != "H":
+                        for atomL in atomK.GetNeighbors():
+                            atomLd = atomL.GetIdx()
+                            if atomLd != atomJd:
+                                rot_bond_idxs.append([atomId,atomJd,atomKd,atomLd])
+                                break
+                        break
+
+        logger.info(f">>> rot_bond_idxs: {rot_bond_idxs}")
+
+        rot_step = 2
+        rot_max = 4
+        rot_offsets = list(range(-rot_max, rot_max + 1, rot_step))
+        logger.info(f">>> Increase reagent sampling by {len(rot_offsets)**len(rot_bond_idxs)}x...")
+
+        mutate_mols = []
+        for mol in mols:
+            conf = mol.GetConformer()
+            initial_degs = []
+            for rot_bond in rot_bond_idxs:
+                atomId, atomJd, atomKd, atomLd = rot_bond
+                initial_deg = GetDihedralDeg(conf, atomId, atomJd, atomKd, atomLd)
+                initial_degs.append(initial_deg)
+            for rot_combo in itertools.product(rot_offsets, repeat=len(rot_bond_idxs)):
+                new_mol = Chem.Mol(mol)
+                new_conf = new_mol.GetConformer()
+                for i, rot_bond in enumerate(rot_bond_idxs):
+                    atomId, atomJd, atomKd, atomLd = rot_bond
+                    deg = initial_degs[i] + rot_combo[i]
+                    SetDihedralDeg(new_conf, atomId, atomJd, atomKd, atomLd, deg)
+                mutate_mols.append(new_mol)
+            
+            with Chem.SDWriter(molfile) as w:
+                for mol in mutate_mols:
+                    w.write(mol)
+
+
     log = logging.getLogger("conformational sampling")
     UNICON_EXE = config["all"]["UNICON_EXE"]
 
     if samplopt == "conformator":
         CONF_EXE = config[samplopt]["CONF_EXE"]
+        # run_external_command(
+        #     f"{CONF_EXE} -i {number}.smi -o {mol2file} -q 2 -n {max_conf} --hydrogens"
+        # )
         run_external_command(
-            f"{CONF_EXE} -i {number}.smi -o {mol2file} -q 2 -n {max_conf} --hydrogens"
+            f"{CONF_EXE} -i {number}.smi -o conformer.{number}.sdf -n {max_conf} --hydrogens"
         )
 
     if samplopt in "bcl":
@@ -106,7 +167,6 @@ def conf_sample(
             -cluster
             """
         )
-        run_external_command(f"{UNICON_EXE} -i conformer.{number}.sdf -o {mol2file}", stderr=subprocess.DEVNULL)
 
     if samplopt == "ccdc":
         CCDC_PYTHON3 = config[samplopt]["CCDC_PYTHON3"]
@@ -136,7 +196,6 @@ def conf_sample(
         if not node in [ "local", "localhost" ]:
             ccdc_command = f"ssh {node} " + ccdc_command
         run_external_command(ccdc_command)
-        run_external_command(f"{UNICON_EXE} -i conformer.{number}.sdf -o {mol2file}", stderr=subprocess.DEVNULL)
 
     if samplopt == "confgenx":
         CONFGENX = config[samplopt]["CONFGENX"]
@@ -158,14 +217,24 @@ def conf_sample(
         run_external_command(
             f"{SCHUTILS}/structconvert -imae {number}-out.maegz -osd conformer.{number}.sdf"
         )
-        run_external_command(f"{UNICON_EXE} -i conformer.{number}.sdf -o {mol2file}", stderr=subprocess.DEVNULL)
 
     if samplopt == "rdkit":
         one_rdk_params = rdk_params(
             mol2file=mol2file, name=number, max_conf=max_conf, rmsd_thres=RMSDThresh
         )
         rdkit_gen(one_rdk_params, log=log)
+    
+    if not exist_size(f"conformer.{number}.sdf") and not exist_size(mol2file):
+        return # generation failed, jump outside to report failure
 
+    if reaction: # for reaction case, we want to increase the torsion sampling linking the reaction group
+        if samplopt == "rdkit":
+            reaction_sample(mol2file)
+        else:
+            reaction_sample(f"conformer.{number}.sdf")
+
+    if samplopt != "rdkit":
+        run_external_command(f"{UNICON_EXE} -i conformer.{number}.sdf -o {mol2file}", stderr=subprocess.DEVNULL)
 
 def rdkit_prep(number, mol2file):
     UNICON_EXE = config["all"]["UNICON_EXE"]

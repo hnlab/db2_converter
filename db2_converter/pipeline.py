@@ -472,6 +472,8 @@ def gen_conf(
                 max_conf,
                 bcl_option,
                 confgenx_option,
+                reaction,
+                chem_color_dict,
                 log=logger,
             )
 
